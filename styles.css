@@ -108,3 +108,21 @@ td.price-cell .price-input{font-weight:800;color:#123a75}
 @media print{.add-photo-actions{display:none!important}}
 [data-theme="dark"] .add-field input,[data-theme="dark"] .add-field select{background:#0f1726;border-color:#2c3a52;color:var(--ink)}
 [data-theme="dark"] .add-photo{background:#0f1726;border-color:#2c3a52}
+
+/* ---------- Phone-width printing: cards, not the wide table ---------- */
+@media print and (max-width:900px){
+  .mobile-list{display:grid!important;gap:8px}
+  .desktop-table{display:none!important}
+  .record-card{break-inside:avoid;page-break-inside:avoid;box-shadow:none;border:1px solid #bbb;background:#fff!important;padding:10px}
+  .record-card.unresolved{background:#fff8e6!important;border-color:#d8a500}
+  .record-actions{display:none!important}
+  .record-title{font-size:14px}
+  .record-release{font-size:12px;color:#333}
+  .record-meta span{background:#f0f0f0;color:#333}
+  .record-grid{gap:6px}
+  .record-grid .cell-input,.record-grid .cell-select,.mobile-value{background:#fff!important;border:1px solid #ddd;padding:5px 6px;font-size:12px;min-height:0;appearance:none}
+  .record-photo{width:44px;height:44px}
+  .price-field .cell-input{border-color:#666!important;background:#f2f2f2!important}
+  .totals{break-inside:avoid}
+  .metrics{grid-template-columns:repeat(4,1fr)!important}
+}
