@@ -59,11 +59,11 @@ app.querySelectorAll('.menu-pop [data-act]').forEach(b=>b.onclick=()=>{closeMenu
 app.querySelectorAll('.menu-pop .menu-file').forEach(l=>l.onclick=e=>e.stopPropagation());
 app.querySelectorAll('details.menu').forEach(d=>d.addEventListener('toggle',()=>{if(d.open)document.querySelectorAll('details.menu[open]').forEach(o=>{if(o!==d)o.open=false})}));
 document.addEventListener('click',menuOutside);
-document.querySelectorAll('[data-edit]').forEach(el=>el.onchange=e=>{el.title=e.target.value;edit(Number(el.dataset.n),el.dataset.edit,e.target.value)});document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>openDrawer(Number(b.dataset.open)));document.querySelectorAll('[data-market]').forEach(b=>b.onclick=()=>refreshMarket(Number(b.dataset.market),b));document.querySelectorAll('[data-drop]').forEach(b=>b.onclick=()=>deleteRecord(Number(b.dataset.drop)));document.querySelector('#dupReview')?.addEventListener('click',openDuplicates);checkStatus();}
+document.querySelectorAll('[data-edit]').forEach(el=>el.onchange=e=>{el.title=e.target.value;edit(Number(el.dataset.n),el.dataset.edit,e.target.value)});document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>openDrawer(Number(b.dataset.open)));document.querySelectorAll('[data-market]').forEach(b=>b.onclick=()=>refreshMarket(Number(b.dataset.market),b));document.querySelectorAll('[data-drop]').forEach(b=>b.onclick=()=>deleteRecord(Number(b.dataset.drop)));document.querySelectorAll('[data-editrec]').forEach(b=>b.onclick=()=>openEdit(Number(b.dataset.editrec)));document.querySelector('#dupReview')?.addEventListener('click',openDuplicates);checkStatus();}
 
-function cardHtml(r){const status=r.unresolved?'<span class="tag warn">VERIFY</span>':r.discogsId?'<span class="tag ok">LINKED</span>':'<span class="tag muted">KNOWN</span>';return `<article class="record-card ${r.unresolved?'unresolved':''}"><div class="record-card-head"><div class="record-headline">${r.photo?`<img class="record-photo" src="${esc(r.photo)}" alt="">`:''}<div><div class="record-number">#${r.number}</div><div class="record-title">${esc(r.artist||'Unknown')}</div><div class="record-release">${esc(r.release||'Untitled')}</div></div></div>${status}</div><div class="record-meta"><span>${esc(r.label||'Label unknown')}</span><span>${esc(r.catno||'Cat # unknown')}</span><span>${esc([r.country,r.year].filter(Boolean).join(' · ')||'Year unknown')}</span></div><div class="record-grid"><label>Media<select class="cell-select" data-edit="media" data-n="${r.number}">${['M','NM','VG+','VG','G+','G','F','P'].map(o=>`<option ${r.media===o?'selected':''}>${o}</option>`).join('')}</select></label><label>Sleeve<select class="cell-select" data-edit="sleeve" data-n="${r.number}">${['M','NM','VG+','VG','G+','G','F','P'].map(o=>`<option ${r.sleeve===o?'selected':''}>${o}</option>`).join('')}</select></label><label>For sale<div class="mobile-value">${esc(r.numForSale||'—')}</div></label><label class="price-field${num(r.price)===null?'':' filled'}">Price<input class="cell-input money price-input" data-edit="price" data-n="${r.number}" value="${esc(r.price)}" placeholder="$"></label><label>Discogs ID<input class="cell-input" data-edit="discogsId" data-n="${r.number}" value="${esc(r.discogsId)}" inputmode="numeric"></label></div><div class="record-actions"><button class="btn primary" data-open="${r.number}">Research</button><button class="btn" data-market="${r.number}" ${r.discogsId?'':'disabled'}>Refresh price</button><button class="btn danger record-delete" data-drop="${r.number}">Delete record</button></div></article>`}
+function cardHtml(r){const status=r.unresolved?'<span class="tag warn">VERIFY</span>':r.discogsId?'<span class="tag ok">LINKED</span>':'<span class="tag muted">KNOWN</span>';return `<article class="record-card ${r.unresolved?'unresolved':''}"><div class="record-card-head"><div class="record-headline">${r.photo?`<img class="record-photo" src="${esc(r.photo)}" alt="">`:''}<div><div class="record-number">#${r.number}</div><div class="record-title">${esc(r.artist||'Unknown')}</div><div class="record-release">${esc(r.release||'Untitled')}</div></div></div>${status}</div><div class="record-meta"><span>${esc(r.label||'Label unknown')}</span><span>${esc(r.catno||'Cat # unknown')}</span><span>${esc([r.country,r.year].filter(Boolean).join(' · ')||'Year unknown')}</span></div><div class="record-grid"><label>Media<select class="cell-select" data-edit="media" data-n="${r.number}">${['M','NM','VG+','VG','G+','G','F','P'].map(o=>`<option ${r.media===o?'selected':''}>${o}</option>`).join('')}</select></label><label>Sleeve<select class="cell-select" data-edit="sleeve" data-n="${r.number}">${['M','NM','VG+','VG','G+','G','F','P'].map(o=>`<option ${r.sleeve===o?'selected':''}>${o}</option>`).join('')}</select></label><label>For sale<div class="mobile-value">${esc(r.numForSale||'—')}</div></label><label class="price-field${num(r.price)===null?'':' filled'}">Price<input class="cell-input money price-input" data-edit="price" data-n="${r.number}" value="${esc(r.price)}" placeholder="$"></label><label>Discogs ID<input class="cell-input" data-edit="discogsId" data-n="${r.number}" value="${esc(r.discogsId)}" inputmode="numeric"></label></div><div class="record-actions"><button class="btn primary" data-editrec="${r.number}">Edit</button><button class="btn" data-open="${r.number}">Research</button><button class="btn" data-market="${r.number}" ${r.discogsId?'':'disabled'}>Refresh price</button><button class="btn danger record-delete" data-drop="${r.number}">Delete record</button></div></article>`}
 
-function rowHtml(r){const status=r.unresolved?'<span class="tag warn">VERIFY</span>':r.discogsId?'<span class="tag ok">LINKED</span>':'<span class="tag muted">KNOWN</span>';return `<tr class="${r.unresolved?'unresolved':''}"><td class="num">${r.number}</td>${inputTd(r,'artist',195)}${inputTd(r,'release',215)}${inputTd(r,'label',165)}${inputTd(r,'catno',140)}${inputTd(r,'country',100)}${inputTd(r,'year',70)}${selectTd(r,'media')}${selectTd(r,'sleeve')}<td><input class="cell-input" data-edit="discogsId" data-n="${r.number}" value="${esc(r.discogsId)}" style="--col:96px"></td><td class="money">${esc(r.numForSale)}</td><td class="price-cell${num(r.price)===null?'':' filled'}"><input class="cell-input money price-input" data-edit="price" data-n="${r.number}" value="${esc(r.price)}" placeholder="$"></td><td>${status}</td><td class="actions"><button class="mini blue" data-open="${r.number}">Research</button> <button class="mini" data-market="${r.number}" ${r.discogsId?'':'disabled'}>Price</button> <button class="mini danger" data-drop="${r.number}" title="Delete this record">Delete</button></td></tr>`}
+function rowHtml(r){const status=r.unresolved?'<span class="tag warn">VERIFY</span>':r.discogsId?'<span class="tag ok">LINKED</span>':'<span class="tag muted">KNOWN</span>';return `<tr class="${r.unresolved?'unresolved':''}"><td class="num">${r.number}</td>${inputTd(r,'artist',195)}${inputTd(r,'release',215)}${inputTd(r,'label',165)}${inputTd(r,'catno',140)}${inputTd(r,'country',100)}${inputTd(r,'year',70)}${selectTd(r,'media')}${selectTd(r,'sleeve')}<td><input class="cell-input" data-edit="discogsId" data-n="${r.number}" value="${esc(r.discogsId)}" style="--col:96px"></td><td class="money">${esc(r.numForSale)}</td><td class="price-cell${num(r.price)===null?'':' filled'}"><input class="cell-input money price-input" data-edit="price" data-n="${r.number}" value="${esc(r.price)}" placeholder="$"></td><td>${status}</td><td class="actions"><button class="mini blue" data-editrec="${r.number}">Edit</button> <button class="mini" data-open="${r.number}">Research</button> <button class="mini" data-market="${r.number}" ${r.discogsId?'':'disabled'}>Price</button> <button class="mini danger" data-drop="${r.number}" title="Delete this record">Delete</button></td></tr>`}
 // The column width is a custom property, not an inline min-width, so the
 // focus rule in the stylesheet can widen the cell instead of losing to it.
 function inputTd(r,k,w){return `<td><input class="cell-input" style="--col:${w}px" data-edit="${k}" data-n="${r.number}" value="${esc(r[k])}" title="${esc(r[k])}"></td>`}
@@ -71,7 +71,7 @@ function selectTd(r,k){const opts=['M','NM','VG+','VG','G+','G','F','P'];return 
 function edit(n,k,v){const r=rows.find(x=>x.number===n);if(!r)return;r[k]=v;if(['artist','release','label','catno','country','year'].includes(k)&&v.trim()) r.unresolved = !r.artist || !r.release || !r.label || !r.catno || !r.year;save()}
 
 async function checkStatus(){try{const r=await fetch('/api/status');const j=await r.json();const dot=document.querySelector('#tokenDot');const text=document.querySelector('#tokenText');if(!dot)return;dot.className='dot '+(j.tokenConfigured?'ok':'');text.textContent=j.tokenConfigured?'Discogs token connected':'Discogs token not configured'}catch{}}
-function openDrawer(n){active=rows.find(r=>r.number===n);const d=document.querySelector('#drawer'),p=document.querySelector('#panel');d.classList.add('open');const search=[active.artist,active.release,active.catno].filter(Boolean).join(' ');p.innerHTML=`<div class="panel-head"><div><div class="eyebrow" style="color:#667085">Record ${active.number}</div><h2>${esc(active.artist||'Unknown')} · ${esc(active.release||'Untitled')}</h2></div><button class="close" id="close">×</button></div><div class="section"><h3>Discogs Search</h3><div class="search-row"><input id="dsq" value="${esc(search)}"><button class="btn primary" id="dsgo">Search</button></div><div id="searchMsg" class="note" style="margin-top:8px">Search by artist, release title or catalog number, then select the exact pressing.</div><div id="results" class="results"></div></div><div class="section"><h3>Current record</h3><div class="note">Discogs ID: <b>${esc(active.discogsId||'Not linked')}</b><br>Tracks/notes: ${esc(active.tracks||'None entered')}<br>Media: ${esc(active.media)} · Sleeve: ${esc(active.sleeve)}</div></div><div id="detail"></div>`;document.querySelector('#close').onclick=closeDrawer;d.onclick=e=>{if(e.target===d)closeDrawer()};document.querySelector('#dsgo').onclick=searchDiscogs;if(active.discogsId)loadDetail(active.discogsId)}
+function openDrawer(n){active=rows.find(r=>r.number===n);const d=document.querySelector('#drawer'),p=document.querySelector('#panel');d.classList.add('open');const search=[active.artist,active.release,active.catno].filter(Boolean).join(' ');p.innerHTML=`<div class="panel-head"><div><div class="eyebrow" style="color:#667085">Record ${active.number}</div><h2>${esc(active.artist||'Unknown')} · ${esc(active.release||'Untitled')}</h2></div><button class="close" id="close">×</button></div><div class="section"><button class="btn" id="toEdit">Edit all fields of this record</button></div><div class="section"><h3>Discogs Search</h3><div class="search-row"><input id="dsq" value="${esc(search)}"><button class="btn primary" id="dsgo">Search</button></div><div id="searchMsg" class="note" style="margin-top:8px">Search by artist, release title or catalog number, then select the exact pressing.</div><div id="results" class="results"></div></div><div class="section"><h3>Current record</h3><div class="note">Discogs ID: <b>${esc(active.discogsId||'Not linked')}</b><br>Tracks/notes: ${esc(active.tracks||'None entered')}<br>Media: ${esc(active.media)} · Sleeve: ${esc(active.sleeve)}</div></div><div id="detail"></div>`;document.querySelector('#close').onclick=closeDrawer;d.onclick=e=>{if(e.target===d)closeDrawer()};document.querySelector('#toEdit').onclick=()=>{const n=active.number;closeDrawer();openEdit(n)};document.querySelector('#dsgo').onclick=searchDiscogs;if(active.discogsId)loadDetail(active.discogsId)}
 function closeDrawer(){document.querySelector('#drawer')?.classList.remove('open');active=null}
 async function searchDiscogs(){const q=document.querySelector('#dsq').value.trim(),msg=document.querySelector('#searchMsg'),out=document.querySelector('#results');if(!q)return;msg.textContent='Searching Discogs…';out.innerHTML='';try{const r=await fetch('/api/search?q='+encodeURIComponent(q));const j=await r.json();if(!r.ok)throw new Error(j.error||'Search failed');msg.textContent=`${j.results.length} results`;out.innerHTML=j.results.map(x=>`<div class="result">${x.thumb?`<img class="thumb" src="${esc(x.thumb)}">`:'<div class="thumb"></div>'}<div><div class="result-title">${esc(x.title)}</div><div class="result-meta">${esc([x.label,x.catno,x.country,x.year,x.format].filter(Boolean).join(' · '))}</div></div><button class="mini blue" data-pick="${x.id}">Use</button></div>`).join('');out.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>pickRelease(Number(b.dataset.pick)))}catch(e){msg.innerHTML=`<span class="error">${esc(e.message)}</span>`}}
 async function pickRelease(id){if(!active)return;active.discogsId=String(id);await loadDetail(id,true);save();openDrawer(active.number)}
@@ -365,6 +365,68 @@ async function saveBulk(){const msg=document.querySelector('#bkMsg'),btn=documen
   closeBulk();render();checkDuplicates({announce:true});
   notify('Records added',`${added} record${added===1?'':'s'} added.${linked?`\n${linked} matched on Discogs.`:''}${failed?`\n${failed} lookup${failed===1?'':'s'} failed.`:''}\n\nBulk lookups take the first Discogs result, so check them with Research before selling.`,'warn')}
 
+// ---------- Edit one record ----------
+// The phone cards only ever exposed grade, price and Discogs id, so on the
+// device this app is built for most of a record could not be corrected at all.
+// This panel edits every field of one record, from any screen.
+const EDIT_TEXT=[['artist','Artist'],['release','Release'],['label','Label'],['catno','Catalogue number'],
+  ['country','Country'],['year','Year','inputmode="numeric"']];
+const EDIT_MARKET=[['discogsId','Discogs ID','inputmode="numeric"'],['numForSale','Copies for sale','inputmode="numeric"'],
+  ['highestPrice','Discogs high','inputmode="decimal"'],['currency','Currency'],['price','Price','inputmode="decimal"']];
+let editing=null;
+function openEdit(number){const r=rows.find(x=>x.number===number);if(!r)return;
+  editing={...r};renderEdit()}
+function renderEdit(){const r=editing;if(!r)return;
+  const d=document.querySelector('#drawer'),p=document.querySelector('#panel');
+  active=null;d.classList.add('open');
+  const f=([k,label,extra=''])=>`<label class="add-field"><span>${esc(label)}</span><input id="ed_${k}" value="${esc(r[k]??'')}" ${extra}></label>`;
+  const grade=(k,label)=>`<label class="add-field"><span>${esc(label)}</span><select id="ed_${k}">${['M','NM','VG+','VG','G+','G','F','P'].map(o=>`<option ${r[k]===o?'selected':''}>${o}</option>`).join('')}</select></label>`;
+  p.innerHTML=`<div class="panel-head"><div><div class="eyebrow" style="color:#667085">Record ${esc(r.number)}</div><h2>Edit this record</h2></div><button class="close" id="close">×</button></div>
+  <div class="section"><h3>Photo</h3>
+    <div class="add-photo">${r.photo?`<img src="${r.photo}" alt="">`:'<div class="add-photo-empty">No photo</div>'}</div>
+    <div class="add-photo-actions"><label class="btn photo-btn">Take photo<input type="file" accept="image/*" capture="environment" id="edCamera" hidden></label>
+    <label class="btn photo-btn">Choose image<input type="file" accept="image/*" id="edFile" hidden></label>
+    ${r.photo?'<button class="btn" id="edClearPhoto">Remove photo</button>':''}</div>
+    <div id="edPhotoMsg" class="note"></div></div>
+  <div class="section"><h3>Identification</h3><div class="add-grid">${EDIT_TEXT.map(f).join('')}</div></div>
+  <div class="section"><h3>Condition</h3><div class="add-grid">${grade('media','Media')}${grade('sleeve','Sleeve')}</div></div>
+  <div class="section"><h3>Discogs and pricing</h3><div class="add-grid">${EDIT_MARKET.map(f).join('')}
+    <label class="add-field"><span>Status</span><input id="ed_marketplaceStatus" value="${esc(r.marketplaceStatus??'')}"></label></div>
+    <div class="note" style="margin-top:8px">Price basis: <b>${esc(r.priceBasis||'not set')}</b>. <button class="mini blue" id="edReprice">Recompute from the high</button></div>
+    ${r.discogsUrl?`<div class="note" style="margin-top:6px"><a class="discogs-link" target="_blank" href="${esc(r.discogsUrl)}">Open on Discogs</a></div>`:''}</div>
+  <div class="section"><h3>Tracks and notes</h3><textarea id="ed_tracks" class="bulk-text" rows="4">${esc(r.tracks??'')}</textarea></div>
+  <div class="section"><div class="sale-actions">
+    <button class="btn primary" id="edSave">Save changes</button>
+    <button class="btn" id="edResearch">Research on Discogs</button>
+    <button class="btn danger" id="edDelete">Delete record</button>
+    <button class="btn" id="edCancel">Cancel</button></div>
+    <div id="edMsg" class="note" style="margin-top:8px"></div></div>`;
+  const collect=()=>{for(const [k] of [...EDIT_TEXT,...EDIT_MARKET])r[k]=document.querySelector('#ed_'+k).value.trim();
+    r.media=document.querySelector('#ed_media').value;r.sleeve=document.querySelector('#ed_sleeve').value;
+    r.marketplaceStatus=document.querySelector('#ed_marketplaceStatus').value.trim();
+    r.tracks=document.querySelector('#ed_tracks').value};
+  document.querySelector('#close').onclick=closeEdit;
+  document.querySelector('#edCancel').onclick=closeEdit;
+  d.onclick=e=>{if(e.target===d)closeEdit()};
+  const photo=async e=>{const file=e.target.files?.[0];if(!file)return;const msg=document.querySelector('#edPhotoMsg');
+    msg.textContent='Processing photo…';collect();
+    try{r.photo=await shrinkImage(file);renderEdit()}catch(err){msg.innerHTML=`<span class="error">${esc(err.message)}</span>`}};
+  document.querySelector('#edCamera').onchange=photo;document.querySelector('#edFile').onchange=photo;
+  document.querySelector('#edClearPhoto')?.addEventListener('click',()=>{collect();r.photo='';renderEdit()});
+  document.querySelector('#edReprice').onclick=()=>{collect();
+    if(repriceRecord(r))renderEdit();else document.querySelector('#edMsg').innerHTML='<span class="error">No high to price from — set a Discogs high, or refresh this record from Discogs.</span>'};
+  document.querySelector('#edResearch').onclick=()=>{const n=r.number;closeEdit();openDrawer(n)};
+  document.querySelector('#edDelete').onclick=async()=>{const n=r.number;closeEdit();await deleteRecord(n)};
+  document.querySelector('#edSave').onclick=()=>{collect();
+    const i=rows.findIndex(x=>x.number===editing.number);
+    if(i<0){document.querySelector('#edMsg').innerHTML='<span class="error">That record no longer exists.</span>';return}
+    rows[i]={...rows[i],...r};
+    rows[i].unresolved=!(rows[i].artist&&rows[i].release&&rows[i].label&&rows[i].catno&&rows[i].year);
+    save();closeEdit();checkDuplicates({announce:true});
+    notify('Record saved',`#${rows[i].number}  ${rows[i].artist||'Unknown'} — ${rows[i].release||'Untitled'}`)};
+}
+function closeEdit(){editing=null;closeDrawer()}
+
 // ---------- Duplicates ----------
 const DUP_FIELDS=[['artist','Artist'],['release','Release'],['label','Label'],['catno','Cat #'],
   ['country','Country'],['year','Year'],['media','Media'],['sleeve','Sleeve'],
@@ -384,13 +446,14 @@ function openDuplicates(){const groups=dupes();const d=document.querySelector('#
     return `<div class="section dup-group"><h3>Set ${gi+1} — ${esc(g.reasons.join(' · '))}</h3>
     <div class="dup-scroll"><table class="dup-table"><thead><tr><th>Field</th>${recs.map(r=>`<th>#${esc(r.number)}</th>`).join('')}</tr></thead>
     <tbody>${DUP_FIELDS.map(([k,label])=>`<tr class="${differs(k)?'dup-differs':''}"><th>${esc(label)}</th>${recs.map(r=>`<td>${esc(r[k]??'')||'—'}</td>`).join('')}</tr>`).join('')}
-    <tr class="dup-actions-row"><th></th>${recs.map(r=>`<td><button class="mini blue" data-keep="${r.number}" data-group="${gi}">Keep this</button> <button class="mini danger" data-dropone="${r.number}">Delete</button></td>`).join('')}</tr>
+    <tr class="dup-actions-row"><th></th>${recs.map(r=>`<td><button class="mini" data-editrec="${r.number}">Edit</button> <button class="mini blue" data-keep="${r.number}" data-group="${gi}">Keep this</button> <button class="mini danger" data-dropone="${r.number}">Delete</button></td>`).join('')}</tr>
     </tbody></table></div>
     <div class="note">Rows that differ between the copies are highlighted. <b>Keep this</b> deletes the other ${recs.length-1} record${recs.length===2?'':'s'} in the set.</div></div>`}).join('')
   :'<div class="section"><div class="note">Nothing in the catalog looks like a copy of anything else. Records are compared on their Discogs release, on artist and title together, and on catalogue number.</div></div>'}`;
   document.querySelector('#close').onclick=closeDrawer;d.onclick=e=>{if(e.target===d)closeDrawer()};
   document.querySelectorAll('[data-dropone]').forEach(b=>b.onclick=()=>deleteRecord(Number(b.dataset.dropone),{thenDuplicates:true}));
-  document.querySelectorAll('[data-keep]').forEach(b=>b.onclick=()=>keepOne(Number(b.dataset.keep),Number(b.dataset.group)));}
+  document.querySelectorAll('[data-keep]').forEach(b=>b.onclick=()=>keepOne(Number(b.dataset.keep),Number(b.dataset.group)));
+  document.querySelectorAll('[data-editrec]').forEach(b=>b.onclick=()=>openEdit(Number(b.dataset.editrec)));}
 async function keepOne(number,groupIndex){const g=dupes()[groupIndex];if(!g)return;
   const drop=g.records.filter(r=>r.number!==number);
   if(!drop.length)return;
