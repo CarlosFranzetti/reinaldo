@@ -1,43 +1,6 @@
-const initial = [
-[1,'Viola','Little Girl','Nervous Records','NE 20478','US','2001','Club Mix; Put Cha Dub; A Small Dub 6:20; Warm Demo Mix 8:31',false],
-[2,'The Advent','Panther EP','Kombination Research','KR005 / KRESEARCH 005','UK','1998','Panther 4:08; Black Patch 4:44; True Combo',false],
-[3,'Rising High Collective','Fever Called Love','Rising High Records','RSN 57','UK','1993','Hardfloor Mix 7:18; Original Mix 8:29',false],
-[4,'Unknown','','','','','','Abstract pink/orange/white label',true],
-[5,'Unknown','','','','','','Black/magenta geometric label',true],
-[6,'Unknown','Nu Drum Drops Vol. 2','Rey-D Records','','','','White label, barcode 7 67213 19741 4',true],
-[7,'Prinni','Peacemaker','Loöq Records','LoQ 008','UK','','',true],
-[8,'Ruff Beats Presents DJ Demigod','D-Day E.P.','Ruff Beats Records','RB017','US','1997','OG Live; Violence Within; Dopest First',false],
-[9,'Pulse','Shut Up Already!','Bassment Records','BM-0051','US','1987','Fierce Mix 4:10; Samplepella Mix 3:05; Pulsating Mix; Piano Dub',false],
-[10,'Various Artists','Lapse Records','Lapse Records','LAPSE001','Germany','2021','Buran 6:31; Ekranoplan 6:36; Every Week 8:02; Happy Trance 7:41',false],
-[11,'Genetic Bass','Frustrate E.P.','Djax-Up-Beats','DJAX-UP-131','Netherlands','1991','S-1 4:15; S-2 4:28; S-3 3:44; S-4 3:45',false],
-[12,'N-Joi','Malfunction','RCA','RDCC62006-1 / RCA 62006-1','US','1991','Malfunction 4:20; Manic 2:37; Techno Gangsters 3:33',false],
-[13,'Unknown','','Nervous Records','','US','','Yellow Nervous label, NOT Storm',true],
-[14,'Storm','Storm','Positiva','12TIVDJX 94','UK','1998','Man With No Name Remix; Rollercoaster\'s Pumped Up Mix',false],
-[15,'DJ Godfather','Who\'s That DJ?','Databass Records','DB061','US','2005','',false],
-[16,'Fit Siegel','','','','','','Dark brown/marbled label',true],
-[17,'Jeremiah','Only Dubbin\' On My 808','Grow!','GROW! 26','Austria','2000','Only Dubbin\' On My 808; Un Dia Soleado',false],
-[18,'Danger Man','Circulation','Circulation','CM 001','','','Artist/title orientation needs verification',true],
-[19,'Allan M','Self Confidence','','','','','Self Confidence; Soho Step; 2Vilas Remix; Malin Genie Remix',true],
-[20,'007','Atmosphere','Odyssey Recordings','OD-02','US','1995','Atmosphere (Electro Funk Mix); Electro Beats',true],
-[21,'Ibex','The Second Coming / Pandora\'s Box','Ibex Music','','US','2008','Produced by Tony Ollivierra',false],
-[22,'Sansibar','Targeted Individuals','Darknet','DN-01 / DN-001','Germany','2020','Liquid Programming; Technology; My Mind; Meri; 4Digitghost; Kaista; Body Rock; Noche',false],
-[23,'Hex Hector / Aki Nawaz','Theme From Love / Sunya','Whirling Records','','','','Exact structure unresolved',true],
-[24,'Various Artists / Andrew Weatherall','Nine O\'Clock Drop','Nuphonic','NUX151','UK','2000','13-track 2LP compilation',false],
-[25,'Various Artists','Brooklyn Swoop','','','US','','Courtesy of Fumero visible, label unresolved',true],
-[26,'Unknown','Nothing Changes / Uro / Hauz','2-Inch Single','','','','Exact artist/label/year unresolved',true],
-[27,'Disco Invaders','Dropping Drummer','','','','','',true],
-[28,'Unknown','Aurora Borealis','','','','','Exact pressing unresolved',true],
-[29,'Strait 2 Dat','You\'re In Da House / I Did This 4 Da Shelter','Nervous Records','','US','','',true],
-[30,'Wayne Folk','Man Of Many Faces','','','','','',true],
-[31,'Smith n Hack','Tribute','Smith n Hack','SMITH001','Germany','2003','No Gimmicks, No Flash; Soul Food; Footstomping Smoker',false],
-[32,'Wyatt Earp & Jonas Tempel feat. Stacy Briscoe','Frequency','Hochokai','HR007','US','2003','Original Mix; Ty Tek & Little Mike Remix',false],
-[33,'James Hardway','Cool Jazz Mother Fucker EP','Substance','','','','',true],
-[34,'DJ Andi K','Spanish Ice / Stop The Music','Version 3.0','#009','','','',true],
-[35,'Soulsonic Force','Trans-Europe Express / Planet Rock','Master Cuts','MC-6028','US','','Unofficial 12-inch',true],
-[36,'Tito Puente Jr.','Azúcar','La Casa','LC0001','US','','Radio Edit 3:48; Extended House 8:47; Tropi Club Intro 6:18',true],
-[37,'Mihigh + Paul K','Unified Field','Melodrom','MELODROM_02','Romania','','Light of Unity 12:59; Inside 12:23',true],
-[38,'Unknown','','Airwave','','','','Airwave logo/boombox artwork only',true]
-].map(r=>({number:r[0],artist:r[1],release:r[2],label:r[3],catno:r[4],country:r[5],year:r[6],tracks:r[7],unresolved:r[8],discogsId:'',media:'VG+',sleeve:'VG+',numForSale:'',lowestPrice:'',highestPrice:'',highestCondition:'',currency:'',price:'',photo:'',discogsUrl:'',marketplaceStatus:'Pending'}));
+import { seed, toRecord } from '/data/catalog.js';
+
+const initial = seed.map(toRecord);
 
 const STORAGE='carlos-vinyl-inventory-v1';
 let rows = load();
@@ -50,6 +13,8 @@ let theme=loadTheme();
 let showTotals=false;
 const PRICE_DISCOUNT=0.20;  // Price sits 20% below the Discogs high
 let adding=false;
+let view='catalog';  // 'catalog' | 'db'
+const MAX_BULK=20;
 let syncing=false;
 let cancelSync=false;
 
@@ -67,11 +32,11 @@ function money(r){const v=num(r.price);return v===null?'':`${r.currency||'$'} ${
 function counts(){return{total:rows.length,resolved:rows.filter(r=>!r.unresolved).length,unresolved:rows.filter(r=>r.unresolved).length,priced:rows.filter(r=>num(r.price)!==null).length}}
 function filtered(){return rows.filter(r=>{const f=filter==='all'||(filter==='unresolved'&&r.unresolved)||(filter==='priced'&&num(r.price)!==null)||(filter==='linked'&&r.discogsId);const hay=[r.number,r.artist,r.release,r.label,r.catno,r.country,r.year].join(' ').toLowerCase();return f&&hay.includes(query.toLowerCase())})}
 
-function render(){const c=counts();app.innerHTML=`<div class="shell"><header class="topbar"><div class="brand"><div><div class="eyebrow">Personal Vinyl Inventory</div><div class="title">Carlos Vinyl Catalog</div><div class="subtitle">Discogs-assisted research, grading, pricing and export</div></div><div class="status-wrap"><div class="status"><span id="tokenDot" class="dot"></span><span id="tokenText">Checking Discogs connection…</span></div><button class="theme-btn" id="themeBtn" type="button" aria-pressed="${theme==='dark'}">${theme==='dark'?'☀️ Light mode':'🌙 Dark mode'}</button></div></div><div class="metrics"><div class="metric"><b>${c.total}</b><span>Total records</span></div><div class="metric"><b>${c.resolved}</b><span>Resolved</span></div><div class="metric"><b>${c.unresolved}</b><span>Needs verification</span></div><div class="metric"><b>${c.priced}</b><span>Marketplace priced</span></div></div></header>
-<div class="toolbar"><input id="q" placeholder="Search artist, release, label, catalog number…" value="${esc(query)}"><select id="filter"><option value="all">All records</option><option value="unresolved">Needs verification</option><option value="linked">Discogs linked</option><option value="priced">Marketplace priced</option></select><button class="btn primary" id="addRec">+ Add record</button><button class="btn" id="forSale">Generate for-sale list</button><button class="btn primary" id="syncAll">${syncing?'Syncing…':'Refresh all from Discogs'}</button><button class="btn" id="calcAll">Calculate all</button><button class="btn" id="xls">Export Excel</button><button class="btn" id="json">Backup JSON</button><button class="btn" id="print">Print / PDF</button><button class="btn" id="reset">Reset catalog</button></div>
+function render(){if(view==='db')return renderDb();const c=counts();app.innerHTML=`<div class="shell"><header class="topbar"><div class="brand"><div><div class="eyebrow">Personal Vinyl Inventory</div><div class="title">Carlos Vinyl Catalog</div><div class="subtitle">Discogs-assisted research, grading, pricing and export</div></div><div class="status-wrap"><div class="status"><span id="tokenDot" class="dot"></span><span id="tokenText">Checking Discogs connection…</span></div><button class="theme-btn" id="themeBtn" type="button" aria-pressed="${theme==='dark'}">${theme==='dark'?'☀️ Light mode':'🌙 Dark mode'}</button></div></div><div class="metrics"><div class="metric"><b>${c.total}</b><span>Total records</span></div><div class="metric"><b>${c.resolved}</b><span>Resolved</span></div><div class="metric"><b>${c.unresolved}</b><span>Needs verification</span></div><div class="metric"><b>${c.priced}</b><span>Marketplace priced</span></div></div></header>
+<div class="toolbar"><input id="q" placeholder="Search artist, release, label, catalog number…" value="${esc(query)}"><select id="filter"><option value="all">All records</option><option value="unresolved">Needs verification</option><option value="linked">Discogs linked</option><option value="priced">Marketplace priced</option></select><button class="btn primary" id="addRec">+ Add record</button><button class="btn" id="bulkAdd">Add many (up to ${MAX_BULK})</button><button class="btn" id="dbView">Edit database</button><button class="btn" id="forSale">Generate for-sale list</button><button class="btn primary" id="syncAll">${syncing?'Syncing…':'Refresh all from Discogs'}</button><button class="btn" id="calcAll">Calculate all</button><button class="btn" id="xls">Export Excel</button><button class="btn" id="json">Backup JSON</button><label class="btn photo-btn">Import JSON<input type="file" accept="application/json,.json" id="importJson" hidden></label><button class="btn" id="print">Print / PDF</button><button class="btn" id="reset">Reset catalog</button></div>
 <div class="sync-bar${syncing?' on':''}" id="syncBar"><div class="sync-text" id="syncText">Preparing…</div><div class="sync-track"><div class="sync-fill" id="syncFill"></div></div><button class="btn" id="syncCancel" type="button">Stop</button><div class="sync-sub" id="syncSub"></div></div>
 <main class="content">${totalsHtml()}<div class="mobile-list">${filtered().map(cardHtml).join('')}${filtered().length?'':'<div class="empty">No records match this filter.</div>'}</div><div class="table-card desktop-table"><div class="table-wrap"><table><thead><tr><th>#</th><th>Artist</th><th>Release</th><th>Label</th><th>Cat #</th><th>Country</th><th>Year</th><th>Media</th><th>Sleeve</th><th>Discogs ID</th><th>For Sale</th><th class="price-col">Price</th><th>Status</th><th class="actions">Actions</th></tr></thead><tbody>${filtered().map(rowHtml).join('')}</tbody></table>${filtered().length?'':'<div class="empty">No records match this filter.</div>'}</div></div><div class="footer-note">Marketplace fields are populated only when Discogs returns them. Missing or restricted values stay blank instead of being estimated.</div></main><div id="drawer" class="drawer"><div class="panel" id="panel"></div></div></div>`;
-const f=document.querySelector('#filter');f.value=filter;f.onchange=e=>{filter=e.target.value;render()};document.querySelector('#q').oninput=e=>{query=e.target.value;render()};document.querySelector('#xls').onclick=exportXls;document.querySelector('#json').onclick=exportJson;document.querySelector('#print').onclick=()=>window.print();document.querySelector('#themeBtn').onclick=toggleTheme;document.querySelector('#addRec').onclick=openAddRecord;document.querySelector('#forSale').onclick=openForSale;document.querySelector('#syncAll').onclick=syncAll;document.querySelector('#calcAll').onclick=calculateAll;document.querySelector('#syncCancel').onclick=()=>{cancelSync=true};document.querySelector('#reset').onclick=()=>{if(confirm('Reset all local edits and restore the original 38-record catalog?')){rows=structuredClone(initial);localStorage.removeItem(STORAGE);render()}};
+const f=document.querySelector('#filter');f.value=filter;f.onchange=e=>{filter=e.target.value;render()};document.querySelector('#q').oninput=e=>{query=e.target.value;render()};document.querySelector('#xls').onclick=exportXls;document.querySelector('#json').onclick=exportJson;document.querySelector('#print').onclick=()=>window.print();document.querySelector('#themeBtn').onclick=toggleTheme;document.querySelector('#addRec').onclick=openAddRecord;document.querySelector('#bulkAdd').onclick=openBulkAdd;document.querySelector('#dbView').onclick=()=>{view='db';render()};document.querySelector('#importJson').onchange=importJson;document.querySelector('#forSale').onclick=openForSale;document.querySelector('#syncAll').onclick=syncAll;document.querySelector('#calcAll').onclick=calculateAll;document.querySelector('#syncCancel').onclick=()=>{cancelSync=true};document.querySelector('#reset').onclick=()=>{if(confirm('Reset all local edits and restore the original 38-record catalog?')){rows=structuredClone(initial);localStorage.removeItem(STORAGE);render()}};
 document.querySelectorAll('[data-edit]').forEach(el=>el.onchange=e=>edit(Number(el.dataset.n),el.dataset.edit,e.target.value));document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>openDrawer(Number(b.dataset.open)));document.querySelectorAll('[data-market]').forEach(b=>b.onclick=()=>refreshMarket(Number(b.dataset.market),b));checkStatus();}
 
 function cardHtml(r){const status=r.unresolved?'<span class="tag warn">VERIFY</span>':r.discogsId?'<span class="tag ok">LINKED</span>':'<span class="tag muted">KNOWN</span>';return `<article class="record-card ${r.unresolved?'unresolved':''}"><div class="record-card-head"><div class="record-headline">${r.photo?`<img class="record-photo" src="${esc(r.photo)}" alt="">`:''}<div><div class="record-number">#${r.number}</div><div class="record-title">${esc(r.artist||'Unknown')}</div><div class="record-release">${esc(r.release||'Untitled')}</div></div></div>${status}</div><div class="record-meta"><span>${esc(r.label||'Label unknown')}</span><span>${esc(r.catno||'Cat # unknown')}</span><span>${esc([r.country,r.year].filter(Boolean).join(' · ')||'Year unknown')}</span></div><div class="record-grid"><label>Media<select class="cell-select" data-edit="media" data-n="${r.number}">${['M','NM','VG+','VG','G+','G','F','P'].map(o=>`<option ${r.media===o?'selected':''}>${o}</option>`).join('')}</select></label><label>Sleeve<select class="cell-select" data-edit="sleeve" data-n="${r.number}">${['M','NM','VG+','VG','G+','G','F','P'].map(o=>`<option ${r.sleeve===o?'selected':''}>${o}</option>`).join('')}</select></label><label>For sale<div class="mobile-value">${esc(r.numForSale||'—')}</div></label><label class="price-field${num(r.price)===null?'':' filled'}">Price<input class="cell-input money price-input" data-edit="price" data-n="${r.number}" value="${esc(r.price)}" placeholder="$"></label><label>Discogs ID<input class="cell-input" data-edit="discogsId" data-n="${r.number}" value="${esc(r.discogsId)}" inputmode="numeric"></label></div><div class="record-actions"><button class="btn primary" data-open="${r.number}">Research</button><button class="btn" data-market="${r.number}" ${r.discogsId?'':'disabled'}>Refresh price</button></div></article>`}
@@ -90,6 +55,154 @@ async function loadDetail(id,apply=false){const box=document.querySelector('#det
 box.innerHTML=`<div class="section"><h3>Discogs release</h3><div class="note"><b>${esc(j.artists)}</b> · ${esc(j.title)}<br>${esc([j.labels?.[0]?.name,j.labels?.[0]?.catno,j.country,j.year].filter(Boolean).join(' · '))}${active?.discogsUrl?`<br><a class="discogs-link" target="_blank" href="${esc(active.discogsUrl)}">Open on Discogs</a>`:''}</div></div><div class="section"><h3>Track list</h3><table class="tracks"><tbody>${(j.tracklist||[]).map(t=>`<tr><td style="width:55px">${esc(t.position)}</td><td>${esc(t.title)}</td><td style="width:70px">${esc(t.duration)}</td></tr>`).join('')||'<tr><td>No track list returned.</td></tr>'}</tbody></table></div><div class="section"><h3>Marketplace</h3><button class="btn primary" id="detailPrice">Refresh marketplace stats</button><div id="marketMsg" class="note" style="margin-top:8px"></div></div>`;document.querySelector('#detailPrice').onclick=()=>refreshMarket(active.number,null,true)}catch(e){box.innerHTML=`<div class="section error">${esc(e.message)}</div>`}}
 async function refreshMarket(n,btn,inside=false){const r=rows.find(x=>x.number===n);if(!r?.discogsId)return;if(btn)btn.disabled=true;const msg=inside?document.querySelector('#marketMsg'):null;if(msg)msg.textContent='Checking Discogs marketplace…';try{const res=await fetch('/api/marketplace/'+r.discogsId),j=await res.json();if(!res.ok)throw new Error(j.error||'Marketplace lookup failed');if(j.available){r.numForSale=j.numForSale??'';r.lowestPrice=j.lowestPrice?.value??'';r.currency=j.lowestPrice?.currency??'';r.marketplaceStatus='Available';}
       applyHigh(r,j);if(j.available){if(msg)msg.innerHTML=`<span class="success">${esc(String(r.numForSale||0))} for sale · lowest ${esc(money(r)||'not returned')}</span>`}else{r.marketplaceStatus='Unavailable';if(msg)msg.innerHTML=`<span class="error">Marketplace stats unavailable: ${esc(j.reason||'restricted')}</span>`}localStorage.setItem(STORAGE,JSON.stringify(rows));if(!inside)render()}catch(e){r.marketplaceStatus='Error';if(msg)msg.innerHTML=`<span class="error">${esc(e.message)}</span>`;if(!inside)render()}finally{if(btn)btn.disabled=false}}
+
+// ---------- Database screen (spreadsheet-style) ----------
+const DB_COLS=[
+  {k:'number',label:'#',w:52,type:'num',ro:true},
+  {k:'artist',label:'Artist',w:170},
+  {k:'release',label:'Release',w:190},
+  {k:'label',label:'Label',w:150},
+  {k:'catno',label:'Cat #',w:120},
+  {k:'country',label:'Country',w:96},
+  {k:'year',label:'Year',w:66},
+  {k:'media',label:'Media',w:76,type:'grade'},
+  {k:'sleeve',label:'Sleeve',w:76,type:'grade'},
+  {k:'discogsId',label:'Discogs ID',w:100},
+  {k:'numForSale',label:'For sale',w:76},
+  {k:'highestPrice',label:'Discogs high',w:104},
+  {k:'price',label:'Price',w:96,cls:'price-cell'},
+  {k:'currency',label:'Currency',w:82},
+  {k:'marketplaceStatus',label:'Status',w:120},
+  {k:'tracks',label:'Tracks / notes',w:280}
+];
+let dbSel=new Set();
+function dbRows(){const q=query.toLowerCase();
+  return rows.filter(r=>!q||DB_COLS.some(c=>String(r[c.k]??'').toLowerCase().includes(q)))}
+function renderDb(){const list=dbRows();
+  app.innerHTML=`<div class="shell db-shell"><header class="topbar db-topbar"><div class="brand"><div><div class="eyebrow">Database editor</div><div class="title">Edit all ${rows.length} records</div><div class="subtitle">Every field is editable. Changes save to this device as you type.</div></div><div class="status-wrap"><button class="theme-btn" id="themeBtn" type="button">${theme==='dark'?'☀️ Light mode':'🌙 Dark mode'}</button><button class="theme-btn" id="backBtn" type="button">← Back to catalog</button></div></div></header>
+  <div class="toolbar"><input id="q" placeholder="Filter any column…" value="${esc(query)}">
+  <button class="btn primary" id="dbAdd">+ Blank row</button>
+  <button class="btn" id="dbDup" ${dbSel.size?'':'disabled'}>Duplicate (${dbSel.size})</button>
+  <button class="btn danger" id="dbDel" ${dbSel.size?'':'disabled'}>Delete (${dbSel.size})</button>
+  <button class="btn" id="dbGrade" ${dbSel.size?'':'disabled'}>Set grade…</button>
+  <button class="btn" id="dbRenum">Renumber</button>
+  <button class="btn" id="dbXls">Export Excel</button>
+  <button class="btn" id="dbJson">Backup JSON</button></div>
+  <main class="content db-content"><div class="table-card"><div class="table-wrap db-wrap"><table class="db-table"><thead><tr><th class="db-check"><input type="checkbox" id="dbAll" ${list.length&&list.every(r=>dbSel.has(r.number))?'checked':''}></th>${DB_COLS.map(c=>`<th style="min-width:${c.w}px">${esc(c.label)}</th>`).join('')}</tr></thead>
+  <tbody>${list.map(dbRowHtml).join('')}</tbody></table>${list.length?'':'<div class="empty">No rows match this filter.</div>'}</div></div>
+  <div class="footer-note">${list.length} of ${rows.length} rows shown. Editing here changes the same catalog the main screen uses.</div></main></div>`;
+  document.querySelector('#themeBtn').onclick=toggleTheme;
+  document.querySelector('#backBtn').onclick=()=>{view='catalog';render()};
+  document.querySelector('#q').oninput=e=>{query=e.target.value;renderDb()};
+  document.querySelector('#dbAdd').onclick=dbAddBlank;
+  document.querySelector('#dbDup').onclick=dbDuplicate;
+  document.querySelector('#dbDel').onclick=dbDelete;
+  document.querySelector('#dbGrade').onclick=dbSetGrade;
+  document.querySelector('#dbRenum').onclick=dbRenumber;
+  document.querySelector('#dbXls').onclick=exportXls;
+  document.querySelector('#dbJson').onclick=exportJson;
+  document.querySelector('#dbAll').onchange=e=>{if(e.target.checked)list.forEach(r=>dbSel.add(r.number));else list.forEach(r=>dbSel.delete(r.number));renderDb()};
+  app.querySelectorAll('[data-dbsel]').forEach(cb=>cb.onchange=()=>{const n=Number(cb.dataset.dbsel);cb.checked?dbSel.add(n):dbSel.delete(n);renderDb()});
+  app.querySelectorAll('[data-dbedit]').forEach(el=>{el.onchange=e=>dbEdit(Number(el.dataset.n),el.dataset.dbedit,e.target.value)});
+}
+function dbRowHtml(r){return `<tr class="${r.unresolved?'unresolved':''}${dbSel.has(r.number)?' picked':''}"><td class="db-check"><input type="checkbox" data-dbsel="${r.number}" ${dbSel.has(r.number)?'checked':''}></td>${DB_COLS.map(c=>{
+  if(c.ro)return `<td class="num">${esc(r[c.k]??'')}</td>`;
+  if(c.type==='grade')return `<td><select class="cell-select" data-dbedit="${c.k}" data-n="${r.number}">${['M','NM','VG+','VG','G+','G','F','P'].map(o=>`<option ${r[c.k]===o?'selected':''}>${o}</option>`).join('')}</select></td>`;
+  return `<td class="${c.cls||''}"><input class="cell-input${c.cls?' price-input money':''}" data-dbedit="${c.k}" data-n="${r.number}" value="${esc(r[c.k]??'')}"></td>`}).join('')}</tr>`}
+function dbEdit(n,k,v){const r=rows.find(x=>x.number===n);if(!r)return;r[k]=v;
+  r.unresolved=!(r.artist&&r.release&&r.label&&r.catno&&r.year);
+  try{localStorage.setItem(STORAGE,JSON.stringify(rows))}catch{}}
+function dbAddBlank(){rows.push({number:nextNumber(),artist:'',release:'',label:'',catno:'',country:'',year:'',tracks:'',unresolved:true,
+  discogsId:'',media:'VG+',sleeve:'VG+',numForSale:'',lowestPrice:'',highestPrice:'',highestCondition:'',currency:'',price:'',photo:'',discogsUrl:'',marketplaceStatus:'Pending'});
+  save();renderDb()}
+function dbDuplicate(){const picked=rows.filter(r=>dbSel.has(r.number));let n=nextNumber();
+  for(const r of picked)rows.push({...r,number:n++,photo:''});
+  dbSel.clear();save();renderDb()}
+function dbDelete(){const picked=rows.filter(r=>dbSel.has(r.number));
+  if(!confirm(`Delete ${picked.length} record${picked.length===1?'':'s'}? This cannot be undone — export a backup first if you are unsure.`))return;
+  rows=rows.filter(r=>!dbSel.has(r.number));dbSel.clear();save();renderDb()}
+function dbSetGrade(){const g=prompt('Set media and sleeve grade for the selected rows (M, NM, VG+, VG, G+, G, F, P):','VG+');
+  if(!g)return;const up=g.trim().toUpperCase();
+  if(!['M','NM','VG+','VG','G+','G','F','P'].includes(up)){alert('Not a Goldmine grade: '+g);return}
+  for(const r of rows)if(dbSel.has(r.number)){r.media=up;r.sleeve=up}
+  save();renderDb()}
+function dbRenumber(){if(!confirm('Renumber every record 1..'+rows.length+' in the current order?'))return;
+  rows.forEach((r,i)=>{r.number=i+1});dbSel.clear();save();renderDb()}
+
+// ---------- Import a catalogue ----------
+async function importJson(e){const file=e.target.files?.[0];if(!file)return;e.target.value='';
+  try{const text=await file.text();const parsed=JSON.parse(text);
+    const incoming=Array.isArray(parsed)?parsed:parsed.records;
+    if(!Array.isArray(incoming)||!incoming.length)throw new Error('That file has no record array in it.');
+    const bad=incoming.find(r=>typeof r!=='object'||r===null);
+    if(bad)throw new Error('That file contains something that is not a record.');
+    if(!confirm(`Replace the current ${rows.length} records with ${incoming.length} from this file?\n\nExport a backup first if you have edits you want to keep.`))return;
+    rows=incoming.map((r,i)=>migrate({number:r.number??i+1,artist:'',release:'',label:'',catno:'',country:'',year:'',tracks:'',unresolved:false,
+      discogsId:'',media:'VG+',sleeve:'VG+',numForSale:'',lowestPrice:'',highestPrice:'',highestCondition:'',currency:'',price:'',photo:'',discogsUrl:'',marketplaceStatus:'Pending',...r}));
+    save();view='catalog';render();
+    alert(`Imported ${rows.length} records.`)}
+  catch(err){alert('Import failed: '+err.message)}}
+
+// ---------- Bulk add (up to MAX_BULK at once) ----------
+let bulk=[];
+function openBulkAdd(){bulk=[];renderBulk()}
+function renderBulk(){const d=document.querySelector('#drawer'),p=document.querySelector('#panel');
+  active=null;d.classList.add('open');
+  p.innerHTML=`<div class="panel-head"><div><div class="eyebrow" style="color:#667085">Bulk add</div><h2>Add up to ${MAX_BULK} records</h2></div><button class="close" id="close">×</button></div>
+  <div class="section"><h3>Photos</h3><div class="add-photo-actions">
+    <label class="btn primary photo-btn">Take photos<input type="file" accept="image/*" capture="environment" multiple id="bkCamera" hidden></label>
+    <label class="btn photo-btn">Choose images<input type="file" accept="image/*" multiple id="bkFiles" hidden></label></div>
+    <div class="note" style="margin-top:8px">One record per photo. Photos are kept on this device for reference — they do not identify the pressing, so add a title below or look each one up after adding.</div></div>
+  <div class="section"><h3>Or paste a list</h3><textarea id="bkText" class="bulk-text" rows="6" placeholder="One record per line:&#10;Aphex Twin - Windowlicker&#10;The Advent - Panther EP&#10;Nervous Records NE 20478"></textarea>
+    <div class="add-photo-actions" style="margin-top:8px"><button class="btn" id="bkParse">Add lines to list</button>
+    <label class="bulk-check"><input type="checkbox" id="bkLookup" checked> Look each one up on Discogs</label></div></div>
+  <div class="section"><h3>Queued (${bulk.length} / ${MAX_BULK})</h3><div id="bkList" class="bulk-list">${bulk.length?bulk.map(bulkItemHtml).join(''):'<div class="note">Nothing queued yet.</div>'}</div></div>
+  <div class="section"><div class="sale-actions"><button class="btn primary" id="bkSave" ${bulk.length?'':'disabled'}>Add ${bulk.length} record${bulk.length===1?'':'s'}</button><button class="btn" id="bkClear" ${bulk.length?'':'disabled'}>Clear</button><button class="btn" id="bkCancel">Close</button></div><div id="bkMsg" class="note" style="margin-top:8px"></div></div>`;
+  document.querySelector('#close').onclick=closeBulk;document.querySelector('#bkCancel').onclick=closeBulk;
+  d.onclick=e=>{if(e.target===d)closeBulk()};
+  const addPhotos=async e=>{const files=[...(e.target.files||[])];if(!files.length)return;
+    const msg=document.querySelector('#bkMsg');const room=MAX_BULK-bulk.length;
+    if(room<=0){msg.innerHTML=`<span class="error">The queue already holds ${MAX_BULK}.</span>`;return}
+    const take=files.slice(0,room);
+    msg.textContent=`Processing ${take.length} photo${take.length===1?'':'s'}…`;
+    for(const f of take){try{bulk.push({title:'',photo:await shrinkImage(f),from:'photo'})}catch{}}
+    renderBulk();
+    document.querySelector('#bkMsg').textContent=files.length>room?`Added ${take.length}. ${files.length-room} skipped — the limit is ${MAX_BULK} at a time.`:`Added ${take.length}.`};
+  document.querySelector('#bkCamera').onchange=addPhotos;document.querySelector('#bkFiles').onchange=addPhotos;
+  document.querySelector('#bkParse').onclick=()=>{const raw=document.querySelector('#bkText').value.split('\n').map(x=>x.trim()).filter(Boolean);
+    const msg=document.querySelector('#bkMsg');const room=MAX_BULK-bulk.length;
+    if(room<=0){msg.innerHTML=`<span class="error">The queue already holds ${MAX_BULK}.</span>`;return}
+    const take=raw.slice(0,room);take.forEach(t=>bulk.push({title:t,photo:'',from:'text'}));
+    renderBulk();document.querySelector('#bkMsg').textContent=raw.length>room?`Added ${take.length} line${take.length===1?'':'s'}. ${raw.length-room} skipped — the limit is ${MAX_BULK}.`:`Added ${take.length} line${take.length===1?'':'s'}.`};
+  document.querySelectorAll('[data-bkdel]').forEach(b=>b.onclick=()=>{bulk.splice(Number(b.dataset.bkdel),1);renderBulk()});
+  document.querySelectorAll('[data-bktitle]').forEach(i=>i.onchange=e=>{bulk[Number(i.dataset.bktitle)].title=e.target.value});
+  document.querySelector('#bkClear').onclick=()=>{bulk=[];renderBulk()};
+  document.querySelector('#bkSave').onclick=saveBulk}
+function bulkItemHtml(b,i){return `<div class="bulk-item">${b.photo?`<img class="bulk-thumb" src="${b.photo}" alt="">`:'<div class="bulk-thumb"></div>'}<input data-bktitle="${i}" value="${esc(b.title)}" placeholder="Artist - title (optional)"><button class="mini" data-bkdel="${i}">Remove</button></div>`}
+function closeBulk(){bulk=[];closeDrawer()}
+async function saveBulk(){const msg=document.querySelector('#bkMsg'),btn=document.querySelector('#bkSave');
+  const lookup=document.querySelector('#bkLookup').checked;
+  btn.disabled=true;let n=nextNumber(),added=0,linked=0,failed=0;
+  for(let i=0;i<bulk.length;i++){const b=bulk[i];
+    msg.textContent=`Adding ${i+1} of ${bulk.length}…`;
+    const rec={number:n++,artist:'',release:'',label:'',catno:'',country:'',year:'',tracks:'',unresolved:true,
+      discogsId:'',media:'VG+',sleeve:'VG+',numForSale:'',lowestPrice:'',highestPrice:'',highestCondition:'',currency:'',
+      price:'',photo:b.photo||'',discogsUrl:'',marketplaceStatus:'Pending'};
+    if(b.title){const parts=b.title.split(/\s+[-–—]\s+/);
+      if(parts.length>1){rec.artist=parts[0].trim();rec.release=parts.slice(1).join(' - ').trim()}else rec.release=b.title}
+    if(lookup&&b.title){
+      try{const sr=await api('/api/search?q='+encodeURIComponent(b.title));await sleep(PACE);
+        const hit=(sr.results||[])[0];
+        if(hit){const rel=await api('/api/release/'+hit.id);await sleep(PACE);
+          rec.discogsId=String(hit.id);applyRelease(rec,rel);linked++}}
+      catch{failed++}}
+    rows.push(rec);added++}
+  try{localStorage.setItem(STORAGE,JSON.stringify(rows))}
+  catch{for(const r of rows)if(!r.price&&r.photo&&rows.indexOf(r)>=rows.length-added)r.photo='';
+    try{localStorage.setItem(STORAGE,JSON.stringify(rows))}catch{}
+    msg.innerHTML='<span class="error">Storage was full, so photos on the new records were dropped. The records were kept.</span>'}
+  closeBulk();render();
+  alert(`Added ${added} record${added===1?'':'s'}.${linked?`\n${linked} matched on Discogs.`:''}${failed?`\n${failed} lookup${failed===1?'':'s'} failed.`:''}\n\nBulk lookups take the first Discogs result, so check them before selling — open each one with Research to pick an exact pressing.`)}
 
 // ---------- Add a record ----------
 let draft=null;

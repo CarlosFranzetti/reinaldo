@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.mjs",
     "test": "node --test test/*.test.mjs",
-    "check": "node --check app.js && node --check server.mjs && node --check api/status.mjs && node --check api/search.mjs && node --check api/release.mjs && node --check api/marketplace.mjs && node --check api/_lib/discogs.mjs"
+    "check": "node --check app.js && node --check server.mjs && node --check api/status.mjs && node --check api/search.mjs && node --check api/release.mjs && node --check api/marketplace.mjs && node --check api/enrich.mjs && node --check api/_lib/discogs.mjs && node --check data/catalog.js"
   },
   "engines": {
     "node": ">=20"

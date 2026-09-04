@@ -126,3 +126,29 @@ td.price-cell .price-input{font-weight:800;color:#123a75}
   .totals{break-inside:avoid}
   .metrics{grid-template-columns:repeat(4,1fr)!important}
 }
+
+/* ---------- Database editor screen ---------- */
+.db-topbar{padding:16px 22px 14px}
+.db-content{padding:14px 16px 24px}
+.db-wrap{max-height:calc(100vh - 230px)}
+.db-table{min-width:1750px}
+.db-table td{padding:4px 5px}
+.db-table .cell-input,.db-table .cell-select{min-width:0;border:1px solid transparent}
+.db-table .cell-input:hover,.db-table .cell-select:hover{border-color:var(--line)}
+.db-check{width:36px;text-align:center}
+.db-check input{width:16px;height:16px}
+tbody tr.picked td{background:#e8f0fe!important}
+.btn.danger{border-color:#e2b4ae;color:#93231a}
+.btn.danger:disabled,.btn:disabled{opacity:.45;cursor:default}
+/* ---------- Bulk add ---------- */
+.bulk-text{width:100%;border:1px solid #cbd4df;border-radius:8px;padding:10px;font:inherit;font-size:13px;background:var(--card);color:var(--ink);resize:vertical}
+.bulk-check{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.bulk-list{display:grid;gap:8px;max-height:340px;overflow:auto}
+.bulk-item{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:8px;align-items:center;border:1px solid var(--line);border-radius:9px;padding:7px}
+.bulk-thumb{width:44px;height:44px;border-radius:6px;object-fit:cover;background:var(--bg)}
+.bulk-item input{min-width:0;height:34px;border:1px solid #cbd4df;border-radius:7px;padding:0 9px;background:var(--card);color:var(--ink)}
+@media(max-width:800px){.db-table{min-width:1400px}.db-wrap{max-height:none}}
+[data-theme="dark"] tbody tr.picked td{background:#1c2b45!important}
+[data-theme="dark"] .btn.danger{border-color:#6d3a34;color:#ff9d90}
+[data-theme="dark"] .bulk-text,[data-theme="dark"] .bulk-item input{background:#0f1726;border-color:#2c3a52;color:var(--ink)}
+[data-theme="dark"] .bulk-thumb{background:#0f1726}
