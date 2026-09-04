@@ -91,8 +91,10 @@ test('the pricing rule has a single definition shared by app and API', async () 
   const fs = await import('node:fs/promises');
   for (const file of ['../app.js', '../api/enrich.mjs']) {
     const src = await fs.readFile(new URL(file, import.meta.url), 'utf8');
-    assert.match(src, /PRICE_DISCOUNT\s*\}?\s*from\s*['"][./]*\/?data\/catalog\.js['"]/,
-      `${file} must import the shared discount`);
+    const imports = src.match(/^import \{([^}]*)\} from '[./]*\/?data\/catalog\.js';/m);
+    assert.ok(imports, `${file} must import from data/catalog.js`);
+    assert.ok(imports[1].split(',').map(x => x.trim()).includes('PRICE_DISCOUNT'),
+      `${file} must import the shared discount rather than define its own`);
     assert.doesNotMatch(src, /\*\s*0\.8\b/, `${file} must not hard-code an old discount`);
   }
 });
@@ -102,8 +104,55 @@ test('the seed catalogue is the only copy of the records', async () => {
   assert.equal(seed.length, 38);
   const fs = await import('node:fs/promises');
   const app = await fs.readFile(new URL('../app.js', import.meta.url), 'utf8');
-  assert.match(app, /import \{ seed, toRecord, PRICE_DISCOUNT \} from '\/data\/catalog\.js'/);
+  const named = app.match(/^import \{([^}]*)\} from '\/data\/catalog\.js';/m);
+  assert.ok(named, 'app.js must import the shared catalogue module');
+  for (const want of ['seed', 'toRecord']) {
+    assert.ok(named[1].split(',').map(x => x.trim()).includes(want), `app.js must import ${want}`);
+  }
   const r = toRecord(seed[0]);
   for (const k of ['price', 'photo', 'highestPrice', 'discogsId']) assert.ok(k in r, `record needs ${k}`);
   assert.ok(!('askingPrice' in r), 'askingPrice was replaced by price');
+});
+
+test('duplicate detection does not flag the untouched seed catalogue', async () => {
+  const { duplicateGroups, seed, toRecord } = await import('../data/catalog.js');
+  const rows = seed.map(toRecord);
+  // 22 of these are "Unknown" with no title; a naive comparison would merge them all
+  assert.deepEqual(duplicateGroups(rows), []);
+});
+
+test('duplicate detection groups real copies and says why', async () => {
+  const { duplicateGroups, seed, toRecord } = await import('../data/catalog.js');
+  const rows = seed.map(toRecord);
+  rows.push({ ...rows[0], number: 39 });                                  // outright copy
+  rows.push({ ...rows[1], number: 40, discogsId: '', catno: '' });        // same artist+title only
+  rows.push({ ...toRecord(seed[2]), number: 41, artist: 'Different', release: 'Thing' }); // shares catno
+  const groups = duplicateGroups(rows);
+  const byNumbers = groups.map(g => g.records.map(r => r.number).sort((a, b) => a - b));
+  assert.ok(byNumbers.some(n => n.join() === '1,39'), 'the exact copy must group with #1');
+  assert.ok(byNumbers.some(n => n.join() === '2,40'), 'artist+title alone must group');
+  assert.ok(byNumbers.some(n => n.join() === '3,41'), 'a shared catalogue number must group');
+  const first = groups.find(g => g.records.some(r => r.number === 39));
+  assert.ok(first.reasons.length, 'a group must explain itself');
+});
+
+test('duplicate detection ignores blanks, Unknown and Various Artists', async () => {
+  const { duplicateGroups } = await import('../data/catalog.js');
+  const blank = n => ({ number: n, artist: '', release: '', catno: '', discogsId: '' });
+  assert.deepEqual(duplicateGroups([blank(1), blank(2), blank(3)]), []);
+  const unknown = n => ({ number: n, artist: 'Unknown', release: '', catno: '', discogsId: '' });
+  assert.deepEqual(duplicateGroups([unknown(1), unknown(2)]), []);
+  const various = n => ({ number: n, artist: 'Various Artists', release: '', catno: 'AB', discogsId: '' });
+  assert.deepEqual(duplicateGroups([various(1), various(2)]), [], 'short catno and VA must not group');
+});
+
+test('duplicate detection merges records linked through a third', async () => {
+  const { duplicateGroups } = await import('../data/catalog.js');
+  const groups = duplicateGroups([
+    { number: 1, artist: 'A', release: 'B', catno: 'XYZ1', discogsId: '' },
+    { number: 2, artist: 'A', release: 'B', catno: '', discogsId: '' },      // matches 1 on artist+title
+    { number: 3, artist: 'C', release: 'D', catno: 'XYZ1', discogsId: '' }   // matches 1 on catno
+  ]);
+  assert.equal(groups.length, 1, 'all three belong to one set');
+  assert.deepEqual(groups[0].records.map(r => r.number).sort(), [1, 2, 3]);
 });

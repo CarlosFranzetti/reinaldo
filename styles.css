@@ -350,3 +350,25 @@ tbody tr.picked td{background:#e8f0fe!important}
   tbody td{padding:11px 11px}
   .cell-input,.cell-select{font-size:14px}
 }
+
+/* ---------- Duplicates ---------- */
+.dup-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:11px 22px;
+  background:var(--amber);border-bottom:1px solid var(--amber-line);color:var(--ink);font-size:13px}
+.dup-bar-text{flex:1;min-width:0}
+.dup-group{padding-top:18px}
+.dup-scroll{overflow-x:auto;margin-top:4px}
+.dup-table{border-collapse:collapse;font-size:12px;min-width:100%}
+.dup-table th,.dup-table td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top;background:var(--card)}
+.dup-table thead th{background:var(--bg);font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);white-space:nowrap;position:static}
+.dup-table tbody th{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);white-space:nowrap;width:96px}
+.dup-table tr.dup-differs td{background:#fff6e0;font-weight:650}
+.dup-table tr.dup-actions-row td{white-space:nowrap;background:var(--bg)}
+.mini.danger{border-color:#e2b4ae;color:#93231a}
+.record-delete{grid-column:1/-1}
+@media(max-width:800px){.dup-bar{padding:10px 12px}.dup-bar .btn{width:100%}}
+@media print{.dup-bar{display:none!important}}
+[data-theme="dark"] .dup-bar{background:var(--amber);border-bottom-color:#6b5416;color:#f0e3c2}
+[data-theme="dark"] .dup-table th,[data-theme="dark"] .dup-table td{border-color:#2c3a52;background:#16202f}
+[data-theme="dark"] .dup-table thead th,[data-theme="dark"] .dup-table tr.dup-actions-row td{background:#0f1726}
+[data-theme="dark"] .dup-table tr.dup-differs td{background:#3a2e12}
+[data-theme="dark"] .mini.danger{border-color:#6d3a34;color:#ff9d90}

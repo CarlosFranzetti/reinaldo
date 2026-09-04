@@ -45,3 +45,66 @@ export const seed = [
 
 export function toRecord(r){return{number:r[0],artist:r[1],release:r[2],label:r[3],catno:r[4],country:r[5],year:r[6],tracks:r[7],unresolved:r[8],
   discogsId:'',media:'VG+',sleeve:'VG+',numForSale:'',lowestPrice:'',highestPrice:'',highestCondition:'',currency:'',price:'',photo:'',discogsUrl:'',marketplaceStatus:'Pending'}}
+
+// ---------- Duplicate detection ----------
+const normalise = v => String(v || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+
+// Three signals, strongest first. Each is deliberately conservative: a blank or
+// placeholder value must never make two records look like the same one, or the
+// 22 unidentified records — all "Unknown" with no title — would collide.
+const SIGNALS = [
+  { reason: 'Same Discogs release', of: r => String(r.discogsId || '').trim() || null },
+  {
+    reason: 'Same artist and title',
+    of: r => {
+      const a = normalise(r.artist), t = normalise(r.release);
+      return a && t && a !== 'unknown' && a !== 'variousartists' ? `${a}~${t}` : null;
+    }
+  },
+  { reason: 'Same catalogue number', of: r => (normalise(r.catno).length >= 3 ? normalise(r.catno) : null) }
+];
+
+/**
+ * Groups records that look like the same physical release.
+ * Returns [{ indexes, records, reasons }], only for groups of two or more.
+ */
+export function duplicateGroups(rows = []) {
+  const parent = rows.map((_, i) => i);
+  const find = i => (parent[i] === i ? i : (parent[i] = find(parent[i])));
+  const union = (a, b) => { a = find(a); b = find(b); if (a !== b) parent[b] = a; };
+
+  const buckets = new Map();
+  rows.forEach((r, i) => {
+    for (const { reason, of } of SIGNALS) {
+      const sig = of(r);
+      if (!sig) continue;
+      const key = `${reason}|${sig}`;
+      if (!buckets.has(key)) buckets.set(key, []);
+      buckets.get(key).push(i);
+    }
+  });
+
+  const why = new Map();
+  for (const [key, idx] of buckets) {
+    if (idx.length < 2) continue;
+    const reason = key.slice(0, key.indexOf('|'));
+    for (let j = 1; j < idx.length; j++) union(idx[0], idx[j]);
+    for (const i of idx) why.set(i, (why.get(i) || new Set()).add(reason));
+  }
+
+  const groups = new Map();
+  rows.forEach((_, i) => {
+    if (!why.has(i)) return;
+    const root = find(i);
+    if (!groups.has(root)) groups.set(root, []);
+    groups.get(root).push(i);
+  });
+
+  return [...groups.values()]
+    .filter(g => g.length > 1)
+    .map(g => ({
+      indexes: g,
+      records: g.map(i => rows[i]),
+      reasons: [...new Set(g.flatMap(i => [...(why.get(i) || [])]))]
+    }));
+}

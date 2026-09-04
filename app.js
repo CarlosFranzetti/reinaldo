@@ -1,4 +1,4 @@
-import { seed, toRecord, PRICE_DISCOUNT } from '/data/catalog.js';
+import { seed, toRecord, PRICE_DISCOUNT, duplicateGroups } from '/data/catalog.js';
 
 const initial = seed.map(toRecord);
 
@@ -40,8 +40,9 @@ function render(){if(view==='db')return renderDb();if(view==='report')return ren
 <div class="toolbar"><div class="seg"><button class="seg-btn on" id="vCatalog">Catalog</button><button class="seg-btn" id="vDb">Database</button><button class="seg-btn" id="vReport">Report</button></div>
 <input id="q" placeholder="Search artist, release, label, catalog number…" value="${esc(query)}"><select id="filter"><option value="all">All records</option><option value="unresolved">Needs verification</option><option value="linked">Discogs linked</option><option value="priced">Priced</option></select>
 <details class="menu"><summary class="btn primary">Add</summary><div class="menu-pop"><button data-act="addRec">Single record…</button><button data-act="bulkAdd">Many at once (up to ${MAX_BULK})…</button></div></details>
-<details class="menu"><summary class="btn">Discogs</summary><div class="menu-pop"><button data-act="rebuild">Rebuild everything from Discogs</button><button data-act="syncAll">Refresh the records I have</button><button data-act="calcAll">Calculate all fields</button><button data-act="basis">Pricing basis…</button></div></details>
+<details class="menu"><summary class="btn">Discogs</summary><div class="menu-pop"><button data-act="rebuild">Rebuild everything from Discogs</button><button data-act="syncAll">Refresh the records I have</button><button data-act="calcAll">Calculate all fields</button><button data-act="dupes">Check for duplicates…</button><button data-act="basis">Pricing basis…</button></div></details>
 <details class="menu"><summary class="btn">Export</summary><div class="menu-pop"><button data-act="report">Collection report (PDF)…</button><button data-act="forSale">For-sale list…</button><button data-act="xls">Excel spreadsheet</button><button data-act="json">Backup JSON</button><label class="menu-file">Restore from backup…<input type="file" accept="application/json,.json" id="importJson" hidden></label><button data-act="reset" class="danger-item">Reset catalog…</button></div></details></div>
+${(()=>{const g=dupes();return g.length?`<div class="dup-bar"><span class="dup-bar-text"><b>${g.length} possible duplicate${g.length===1?'':' sets'}</b> — ${g.reduce((n,x)=>n+x.records.length,0)} records look like copies of each other.</span><button class="btn" id="dupReview">Compare and delete…</button></div>`:''})()}
 <div class="sync-bar${syncing?' on':''}" id="syncBar"><div class="sync-text" id="syncText">Preparing…</div><div class="sync-track"><div class="sync-fill" id="syncFill"></div></div><button class="btn" id="syncCancel" type="button">Stop</button><div class="sync-sub" id="syncSub"></div></div>
 <main class="content">${totalsHtml()}<div class="mobile-list">${filtered().map(cardHtml).join('')}${filtered().length?'':'<div class="empty">No records match this filter.</div>'}</div><div class="table-card desktop-table"><div class="table-wrap"><table><thead><tr><th>#</th><th>Artist</th><th>Release</th><th>Label</th><th>Cat #</th><th>Country</th><th>Year</th><th>Media</th><th>Sleeve</th><th>Discogs ID</th><th>For Sale</th><th class="price-col">Price</th><th>Status</th><th class="actions">Actions</th></tr></thead><tbody>${filtered().map(rowHtml).join('')}</tbody></table>${filtered().length?'':'<div class="empty">No records match this filter.</div>'}</div></div><div class="footer-note">Marketplace fields are populated only when Discogs returns them. Missing or restricted values stay blank instead of being estimated.</div></main><div id="drawer" class="drawer"><div class="panel" id="panel"></div></div></div>`;
 const f=document.querySelector('#filter');f.value=filter;f.onchange=e=>{filter=e.target.value;render()};document.querySelector('#q').oninput=e=>{query=e.target.value;render()};
@@ -51,18 +52,18 @@ document.querySelector('#vReport').onclick=()=>{view='report';render()};
 document.querySelector('#importJson').onchange=importJson;
 document.querySelector('#syncCancel').onclick=()=>{cancelSync=true};
 const ACTIONS={addRec:openAddRecord,bulkAdd:openBulkAdd,rebuild:serverRebuild,syncAll:syncAll,calcAll:calculateAll,
-  report:()=>{view='report';render()},forSale:openForSale,xls:exportXls,json:exportJson,
+  report:()=>{view='report';render()},forSale:openForSale,dupes:openDuplicates,xls:exportXls,json:exportJson,
   reset:async()=>{if(await askConfirm('Reset catalog','All local edits, prices and photos are discarded and the original 38 records restored.',{danger:true,okLabel:'Reset'})){rows=structuredClone(initial);localStorage.removeItem(STORAGE);render();notify('Catalog reset','The original 38 records were restored.')}},
   basis:setPricingBasis};
 app.querySelectorAll('.menu-pop [data-act]').forEach(b=>b.onclick=()=>{closeMenus();ACTIONS[b.dataset.act]?.()});
 app.querySelectorAll('.menu-pop .menu-file').forEach(l=>l.onclick=e=>e.stopPropagation());
 app.querySelectorAll('details.menu').forEach(d=>d.addEventListener('toggle',()=>{if(d.open)document.querySelectorAll('details.menu[open]').forEach(o=>{if(o!==d)o.open=false})}));
 document.addEventListener('click',menuOutside);
-document.querySelectorAll('[data-edit]').forEach(el=>el.onchange=e=>{el.title=e.target.value;edit(Number(el.dataset.n),el.dataset.edit,e.target.value)});document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>openDrawer(Number(b.dataset.open)));document.querySelectorAll('[data-market]').forEach(b=>b.onclick=()=>refreshMarket(Number(b.dataset.market),b));checkStatus();}
+document.querySelectorAll('[data-edit]').forEach(el=>el.onchange=e=>{el.title=e.target.value;edit(Number(el.dataset.n),el.dataset.edit,e.target.value)});document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>openDrawer(Number(b.dataset.open)));document.querySelectorAll('[data-market]').forEach(b=>b.onclick=()=>refreshMarket(Number(b.dataset.market),b));document.querySelectorAll('[data-drop]').forEach(b=>b.onclick=()=>deleteRecord(Number(b.dataset.drop)));document.querySelector('#dupReview')?.addEventListener('click',openDuplicates);checkStatus();}
 
-function cardHtml(r){const status=r.unresolved?'<span class="tag warn">VERIFY</span>':r.discogsId?'<span class="tag ok">LINKED</span>':'<span class="tag muted">KNOWN</span>';return `<article class="record-card ${r.unresolved?'unresolved':''}"><div class="record-card-head"><div class="record-headline">${r.photo?`<img class="record-photo" src="${esc(r.photo)}" alt="">`:''}<div><div class="record-number">#${r.number}</div><div class="record-title">${esc(r.artist||'Unknown')}</div><div class="record-release">${esc(r.release||'Untitled')}</div></div></div>${status}</div><div class="record-meta"><span>${esc(r.label||'Label unknown')}</span><span>${esc(r.catno||'Cat # unknown')}</span><span>${esc([r.country,r.year].filter(Boolean).join(' · ')||'Year unknown')}</span></div><div class="record-grid"><label>Media<select class="cell-select" data-edit="media" data-n="${r.number}">${['M','NM','VG+','VG','G+','G','F','P'].map(o=>`<option ${r.media===o?'selected':''}>${o}</option>`).join('')}</select></label><label>Sleeve<select class="cell-select" data-edit="sleeve" data-n="${r.number}">${['M','NM','VG+','VG','G+','G','F','P'].map(o=>`<option ${r.sleeve===o?'selected':''}>${o}</option>`).join('')}</select></label><label>For sale<div class="mobile-value">${esc(r.numForSale||'—')}</div></label><label class="price-field${num(r.price)===null?'':' filled'}">Price<input class="cell-input money price-input" data-edit="price" data-n="${r.number}" value="${esc(r.price)}" placeholder="$"></label><label>Discogs ID<input class="cell-input" data-edit="discogsId" data-n="${r.number}" value="${esc(r.discogsId)}" inputmode="numeric"></label></div><div class="record-actions"><button class="btn primary" data-open="${r.number}">Research</button><button class="btn" data-market="${r.number}" ${r.discogsId?'':'disabled'}>Refresh price</button></div></article>`}
+function cardHtml(r){const status=r.unresolved?'<span class="tag warn">VERIFY</span>':r.discogsId?'<span class="tag ok">LINKED</span>':'<span class="tag muted">KNOWN</span>';return `<article class="record-card ${r.unresolved?'unresolved':''}"><div class="record-card-head"><div class="record-headline">${r.photo?`<img class="record-photo" src="${esc(r.photo)}" alt="">`:''}<div><div class="record-number">#${r.number}</div><div class="record-title">${esc(r.artist||'Unknown')}</div><div class="record-release">${esc(r.release||'Untitled')}</div></div></div>${status}</div><div class="record-meta"><span>${esc(r.label||'Label unknown')}</span><span>${esc(r.catno||'Cat # unknown')}</span><span>${esc([r.country,r.year].filter(Boolean).join(' · ')||'Year unknown')}</span></div><div class="record-grid"><label>Media<select class="cell-select" data-edit="media" data-n="${r.number}">${['M','NM','VG+','VG','G+','G','F','P'].map(o=>`<option ${r.media===o?'selected':''}>${o}</option>`).join('')}</select></label><label>Sleeve<select class="cell-select" data-edit="sleeve" data-n="${r.number}">${['M','NM','VG+','VG','G+','G','F','P'].map(o=>`<option ${r.sleeve===o?'selected':''}>${o}</option>`).join('')}</select></label><label>For sale<div class="mobile-value">${esc(r.numForSale||'—')}</div></label><label class="price-field${num(r.price)===null?'':' filled'}">Price<input class="cell-input money price-input" data-edit="price" data-n="${r.number}" value="${esc(r.price)}" placeholder="$"></label><label>Discogs ID<input class="cell-input" data-edit="discogsId" data-n="${r.number}" value="${esc(r.discogsId)}" inputmode="numeric"></label></div><div class="record-actions"><button class="btn primary" data-open="${r.number}">Research</button><button class="btn" data-market="${r.number}" ${r.discogsId?'':'disabled'}>Refresh price</button><button class="btn danger record-delete" data-drop="${r.number}">Delete record</button></div></article>`}
 
-function rowHtml(r){const status=r.unresolved?'<span class="tag warn">VERIFY</span>':r.discogsId?'<span class="tag ok">LINKED</span>':'<span class="tag muted">KNOWN</span>';return `<tr class="${r.unresolved?'unresolved':''}"><td class="num">${r.number}</td>${inputTd(r,'artist',195)}${inputTd(r,'release',215)}${inputTd(r,'label',165)}${inputTd(r,'catno',140)}${inputTd(r,'country',100)}${inputTd(r,'year',70)}${selectTd(r,'media')}${selectTd(r,'sleeve')}<td><input class="cell-input" data-edit="discogsId" data-n="${r.number}" value="${esc(r.discogsId)}" style="--col:96px"></td><td class="money">${esc(r.numForSale)}</td><td class="price-cell${num(r.price)===null?'':' filled'}"><input class="cell-input money price-input" data-edit="price" data-n="${r.number}" value="${esc(r.price)}" placeholder="$"></td><td>${status}</td><td class="actions"><button class="mini blue" data-open="${r.number}">Research</button> <button class="mini" data-market="${r.number}" ${r.discogsId?'':'disabled'}>Price</button></td></tr>`}
+function rowHtml(r){const status=r.unresolved?'<span class="tag warn">VERIFY</span>':r.discogsId?'<span class="tag ok">LINKED</span>':'<span class="tag muted">KNOWN</span>';return `<tr class="${r.unresolved?'unresolved':''}"><td class="num">${r.number}</td>${inputTd(r,'artist',195)}${inputTd(r,'release',215)}${inputTd(r,'label',165)}${inputTd(r,'catno',140)}${inputTd(r,'country',100)}${inputTd(r,'year',70)}${selectTd(r,'media')}${selectTd(r,'sleeve')}<td><input class="cell-input" data-edit="discogsId" data-n="${r.number}" value="${esc(r.discogsId)}" style="--col:96px"></td><td class="money">${esc(r.numForSale)}</td><td class="price-cell${num(r.price)===null?'':' filled'}"><input class="cell-input money price-input" data-edit="price" data-n="${r.number}" value="${esc(r.price)}" placeholder="$"></td><td>${status}</td><td class="actions"><button class="mini blue" data-open="${r.number}">Research</button> <button class="mini" data-market="${r.number}" ${r.discogsId?'':'disabled'}>Price</button> <button class="mini danger" data-drop="${r.number}" title="Delete this record">Delete</button></td></tr>`}
 // The column width is a custom property, not an inline min-width, so the
 // focus rule in the stylesheet can widen the cell instead of losing to it.
 function inputTd(r,k,w){return `<td><input class="cell-input" style="--col:${w}px" data-edit="${k}" data-n="${r.number}" value="${esc(r[k])}" title="${esc(r[k])}"></td>`}
@@ -240,11 +241,13 @@ function renderDb(){const list=dbRows();
   <button class="btn danger" id="dbDel" ${dbSel.size?'':'disabled'}>Delete (${dbSel.size})</button>
   <button class="btn" id="dbGrade" ${dbSel.size?'':'disabled'}>Set grade…</button>
   <button class="btn" id="dbRenum">Renumber</button>
+  <button class="btn" id="dbDupes">Duplicates${dupes().length?` (${dupes().length})`:''}</button>
   <button class="btn" id="dbXls">Export Excel</button>
   <button class="btn" id="dbJson">Backup JSON</button></div>
   <main class="content db-content"><div class="table-card"><div class="table-wrap db-wrap"><table class="db-table"><thead><tr><th class="db-check"><input type="checkbox" id="dbAll" ${list.length&&list.every(r=>dbSel.has(r.number))?'checked':''}></th>${DB_COLS.map(c=>`<th style="min-width:${c.w}px">${esc(c.label)}</th>`).join('')}</tr></thead>
   <tbody>${list.map(dbRowHtml).join('')}</tbody></table>${list.length?'':'<div class="empty">No rows match this filter.</div>'}</div></div>
-  <div class="footer-note">${list.length} of ${rows.length} rows shown. Editing here changes the same catalog the main screen uses.</div></main></div>`;
+  <div class="footer-note">${list.length} of ${rows.length} rows shown. Editing here changes the same catalog the main screen uses.</div></main>
+  <div id="drawer" class="drawer"><div class="panel" id="panel"></div></div></div>`;
   document.querySelector('#themeBtn').onclick=toggleTheme;
   document.querySelector('#backBtn').onclick=()=>{view='catalog';render()};
   document.querySelector('#vCatalog2').onclick=()=>{view='catalog';render()};
@@ -255,6 +258,7 @@ function renderDb(){const list=dbRows();
   document.querySelector('#dbDel').onclick=dbDelete;
   document.querySelector('#dbGrade').onclick=dbSetGrade;
   document.querySelector('#dbRenum').onclick=dbRenumber;
+  document.querySelector('#dbDupes').onclick=openDuplicates;
   document.querySelector('#dbXls').onclick=exportXls;
   document.querySelector('#dbJson').onclick=exportJson;
   document.querySelector('#dbAll').onchange=e=>{if(e.target.checked)list.forEach(r=>dbSel.add(r.number));else list.forEach(r=>dbSel.delete(r.number));renderDb()};
@@ -296,7 +300,7 @@ async function importJson(e){const file=e.target.files?.[0];if(!file)return;e.ta
     if(!await askConfirm('Restore from backup',`Replace the current ${rows.length} records with ${incoming.length} from this file?\nExport a backup first if you have edits you want to keep.`,{danger:true,okLabel:'Replace'}))return;
     rows=incoming.map((r,i)=>migrate({number:r.number??i+1,artist:'',release:'',label:'',catno:'',country:'',year:'',tracks:'',unresolved:false,
       discogsId:'',media:'VG+',sleeve:'VG+',numForSale:'',lowestPrice:'',highestPrice:'',highestCondition:'',currency:'',price:'',photo:'',discogsUrl:'',marketplaceStatus:'Pending',...r}));
-    save();view='catalog';render();
+    save();view='catalog';render();checkDuplicates({announce:true});
     notify('Backup restored',`${rows.length} records imported.`)}
   catch(err){notify('Import failed',err.message,'bad')}}
 
@@ -358,8 +362,48 @@ async function saveBulk(){const msg=document.querySelector('#bkMsg'),btn=documen
   catch{for(const r of rows)if(!r.price&&r.photo&&rows.indexOf(r)>=rows.length-added)r.photo='';
     try{localStorage.setItem(STORAGE,JSON.stringify(rows))}catch{}
     msg.innerHTML='<span class="error">Storage was full, so photos on the new records were dropped. The records were kept.</span>'}
-  closeBulk();render();
+  closeBulk();render();checkDuplicates({announce:true});
   notify('Records added',`${added} record${added===1?'':'s'} added.${linked?`\n${linked} matched on Discogs.`:''}${failed?`\n${failed} lookup${failed===1?'':'s'} failed.`:''}\n\nBulk lookups take the first Discogs result, so check them with Research before selling.`,'warn')}
+
+// ---------- Duplicates ----------
+const DUP_FIELDS=[['artist','Artist'],['release','Release'],['label','Label'],['catno','Cat #'],
+  ['country','Country'],['year','Year'],['media','Media'],['sleeve','Sleeve'],
+  ['discogsId','Discogs ID'],['numForSale','For sale'],['price','Price'],['marketplaceStatus','Status']];
+function dupes(){return duplicateGroups(rows)}
+// Called after anything that can introduce a copy, so the warning is never stale.
+function checkDuplicates({announce=false}={}){const g=dupes();
+  if(announce&&g.length)notify(`${g.length} possible duplicate${g.length===1?'':' sets'}`,
+    `${g.reduce((n,x)=>n+x.records.length,0)} records look like copies of each other. Open Duplicates to compare them side by side and delete the ones you do not want.`,'warn');
+  return g}
+function openDuplicates(){const groups=dupes();const d=document.querySelector('#drawer'),p=document.querySelector('#panel');
+  active=null;d.classList.add('open');
+  p.innerHTML=`<div class="panel-head"><div><div class="eyebrow" style="color:#667085">Duplicates</div><h2>${groups.length?`${groups.length} possible duplicate set${groups.length===1?'':'s'}`:'No duplicates found'}</h2></div><button class="close" id="close">×</button></div>
+  ${groups.length?groups.map((g,gi)=>{
+    const recs=g.records;
+    const differs=k=>new Set(recs.map(r=>String(r[k]??''))).size>1;
+    return `<div class="section dup-group"><h3>Set ${gi+1} — ${esc(g.reasons.join(' · '))}</h3>
+    <div class="dup-scroll"><table class="dup-table"><thead><tr><th>Field</th>${recs.map(r=>`<th>#${esc(r.number)}</th>`).join('')}</tr></thead>
+    <tbody>${DUP_FIELDS.map(([k,label])=>`<tr class="${differs(k)?'dup-differs':''}"><th>${esc(label)}</th>${recs.map(r=>`<td>${esc(r[k]??'')||'—'}</td>`).join('')}</tr>`).join('')}
+    <tr class="dup-actions-row"><th></th>${recs.map(r=>`<td><button class="mini blue" data-keep="${r.number}" data-group="${gi}">Keep this</button> <button class="mini danger" data-dropone="${r.number}">Delete</button></td>`).join('')}</tr>
+    </tbody></table></div>
+    <div class="note">Rows that differ between the copies are highlighted. <b>Keep this</b> deletes the other ${recs.length-1} record${recs.length===2?'':'s'} in the set.</div></div>`}).join('')
+  :'<div class="section"><div class="note">Nothing in the catalog looks like a copy of anything else. Records are compared on their Discogs release, on artist and title together, and on catalogue number.</div></div>'}`;
+  document.querySelector('#close').onclick=closeDrawer;d.onclick=e=>{if(e.target===d)closeDrawer()};
+  document.querySelectorAll('[data-dropone]').forEach(b=>b.onclick=()=>deleteRecord(Number(b.dataset.dropone),{thenDuplicates:true}));
+  document.querySelectorAll('[data-keep]').forEach(b=>b.onclick=()=>keepOne(Number(b.dataset.keep),Number(b.dataset.group)));}
+async function keepOne(number,groupIndex){const g=dupes()[groupIndex];if(!g)return;
+  const drop=g.records.filter(r=>r.number!==number);
+  if(!drop.length)return;
+  if(!await askConfirm(`Keep #${number}?`,`This deletes ${drop.length} other record${drop.length===1?'':'s'} in the set: ${drop.map(r=>'#'+r.number).join(', ')}.\nThis cannot be undone — export a backup first if you are unsure.`,{danger:true,okLabel:`Delete ${drop.length}`}))return;
+  const gone=new Set(drop.map(r=>r.number));
+  rows=rows.filter(r=>!gone.has(r.number));save();
+  notify('Duplicates removed',`Kept #${number}, deleted ${drop.length} record${drop.length===1?'':'s'}.`);
+  openDuplicates()}
+async function deleteRecord(number,{thenDuplicates=false}={}){const r=rows.find(x=>x.number===number);if(!r)return;
+  if(!await askConfirm(`Delete #${number}?`,`${r.artist||'Unknown'} — ${r.release||'Untitled'}\nThis cannot be undone — export a backup first if you are unsure.`,{danger:true,okLabel:'Delete'}))return;
+  rows=rows.filter(x=>x.number!==number);save();
+  notify('Record deleted',`#${number} ${r.artist||'Unknown'} — ${r.release||'Untitled'} was removed.`);
+  if(thenDuplicates)openDuplicates()}
 
 // ---------- Server-side rebuild ----------
 // /api/enrich does the Discogs work on the server in slices, so the phone
@@ -475,7 +519,7 @@ function saveDraft(){const msg=document.querySelector('#afSaveMsg');
       try{localStorage.setItem(STORAGE,JSON.stringify(rows));msg.innerHTML='<span class="error">Record added, but the photo would not fit in this device\'s storage and was dropped.</span>'}
       catch{rows.pop();msg.innerHTML='<span class="error">This device\'s storage is full. Export a backup and reset the catalog to free space.</span>';return}}
     else{rows.pop();msg.innerHTML='<span class="error">This device\'s storage is full. Export a backup to free space.</span>';return}}
-  closeAdd();render();
+  closeAdd();render();checkDuplicates({announce:true});
   notify('Record added',`#${rec.number}  ${rec.artist||'Unknown'} — ${rec.release||'Untitled'}${rec.price?`\nPrice ${rec.currency||'$'} ${rec.price}`:''}`)}
 
 // ---------- Asking prices and for-sale sheet ----------
