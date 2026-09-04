@@ -32,11 +32,27 @@ function money(r){const v=num(r.price);return v===null?'':`${r.currency||'$'} ${
 function counts(){return{total:rows.length,resolved:rows.filter(r=>!r.unresolved).length,unresolved:rows.filter(r=>r.unresolved).length,priced:rows.filter(r=>num(r.price)!==null).length}}
 function filtered(){return rows.filter(r=>{const f=filter==='all'||(filter==='unresolved'&&r.unresolved)||(filter==='priced'&&num(r.price)!==null)||(filter==='linked'&&r.discogsId);const hay=[r.number,r.artist,r.release,r.label,r.catno,r.country,r.year].join(' ').toLowerCase();return f&&hay.includes(query.toLowerCase())})}
 
-function render(){if(view==='db')return renderDb();const c=counts();app.innerHTML=`<div class="shell"><header class="topbar"><div class="brand"><div><div class="eyebrow">Personal Vinyl Inventory</div><div class="title">Carlos Vinyl Catalog</div><div class="subtitle">Discogs-assisted research, grading, pricing and export</div></div><div class="status-wrap"><div class="status"><span id="tokenDot" class="dot"></span><span id="tokenText">Checking Discogs connection…</span></div><button class="theme-btn" id="themeBtn" type="button" aria-pressed="${theme==='dark'}">${theme==='dark'?'☀️ Light mode':'🌙 Dark mode'}</button></div></div><div class="metrics"><div class="metric"><b>${c.total}</b><span>Total records</span></div><div class="metric"><b>${c.resolved}</b><span>Resolved</span></div><div class="metric"><b>${c.unresolved}</b><span>Needs verification</span></div><div class="metric"><b>${c.priced}</b><span>Marketplace priced</span></div></div></header>
-<div class="toolbar"><input id="q" placeholder="Search artist, release, label, catalog number…" value="${esc(query)}"><select id="filter"><option value="all">All records</option><option value="unresolved">Needs verification</option><option value="linked">Discogs linked</option><option value="priced">Marketplace priced</option></select><button class="btn primary" id="addRec">+ Add record</button><button class="btn" id="bulkAdd">Add many (up to ${MAX_BULK})</button><button class="btn" id="dbView">Edit database</button><button class="btn" id="rebuild">Rebuild from Discogs</button><button class="btn" id="forSale">Generate for-sale list</button><button class="btn primary" id="syncAll">${syncing?'Syncing…':'Refresh all from Discogs'}</button><button class="btn" id="calcAll">Calculate all</button><button class="btn" id="xls">Export Excel</button><button class="btn" id="json">Backup JSON</button><label class="btn photo-btn">Import JSON<input type="file" accept="application/json,.json" id="importJson" hidden></label><button class="btn" id="print">Print / PDF</button><button class="btn" id="reset">Reset catalog</button></div>
+function render(){if(view==='db')return renderDb();if(view==='report')return renderReport();const c=counts();app.innerHTML=`<div class="shell"><header class="topbar"><div class="brand"><div><div class="eyebrow">Personal Vinyl Inventory</div><div class="title">Carlos Vinyl Catalog</div><div class="subtitle">Discogs-assisted research, grading, pricing and export</div></div><div class="status-wrap"><div class="status"><span id="tokenDot" class="dot"></span><span id="tokenText">Checking Discogs connection…</span></div><button class="theme-btn" id="themeBtn" type="button" aria-pressed="${theme==='dark'}">${theme==='dark'?'☀️ Light mode':'🌙 Dark mode'}</button></div></div><div class="metrics"><div class="metric"><b>${c.total}</b><span>Total records</span></div><div class="metric"><b>${c.resolved}</b><span>Resolved</span></div><div class="metric"><b>${c.unresolved}</b><span>Needs verification</span></div><div class="metric"><b>${c.priced}</b><span>Marketplace priced</span></div></div></header>
+<div class="toolbar"><div class="seg"><button class="seg-btn on" id="vCatalog">Catalog</button><button class="seg-btn" id="vDb">Database</button><button class="seg-btn" id="vReport">Report</button></div>
+<input id="q" placeholder="Search artist, release, label, catalog number…" value="${esc(query)}"><select id="filter"><option value="all">All records</option><option value="unresolved">Needs verification</option><option value="linked">Discogs linked</option><option value="priced">Priced</option></select>
+<details class="menu"><summary class="btn primary">Add</summary><div class="menu-pop"><button data-act="addRec">Single record…</button><button data-act="bulkAdd">Many at once (up to ${MAX_BULK})…</button></div></details>
+<details class="menu"><summary class="btn">Discogs</summary><div class="menu-pop"><button data-act="rebuild">Rebuild everything from Discogs</button><button data-act="syncAll">Refresh the records I have</button><button data-act="calcAll">Calculate all fields</button></div></details>
+<details class="menu"><summary class="btn">Export</summary><div class="menu-pop"><button data-act="report">Collection report (PDF)…</button><button data-act="forSale">For-sale list…</button><button data-act="xls">Excel spreadsheet</button><button data-act="json">Backup JSON</button><label class="menu-file">Restore from backup…<input type="file" accept="application/json,.json" id="importJson" hidden></label><button data-act="reset" class="danger-item">Reset catalog…</button></div></details></div>
 <div class="sync-bar${syncing?' on':''}" id="syncBar"><div class="sync-text" id="syncText">Preparing…</div><div class="sync-track"><div class="sync-fill" id="syncFill"></div></div><button class="btn" id="syncCancel" type="button">Stop</button><div class="sync-sub" id="syncSub"></div></div>
 <main class="content">${totalsHtml()}<div class="mobile-list">${filtered().map(cardHtml).join('')}${filtered().length?'':'<div class="empty">No records match this filter.</div>'}</div><div class="table-card desktop-table"><div class="table-wrap"><table><thead><tr><th>#</th><th>Artist</th><th>Release</th><th>Label</th><th>Cat #</th><th>Country</th><th>Year</th><th>Media</th><th>Sleeve</th><th>Discogs ID</th><th>For Sale</th><th class="price-col">Price</th><th>Status</th><th class="actions">Actions</th></tr></thead><tbody>${filtered().map(rowHtml).join('')}</tbody></table>${filtered().length?'':'<div class="empty">No records match this filter.</div>'}</div></div><div class="footer-note">Marketplace fields are populated only when Discogs returns them. Missing or restricted values stay blank instead of being estimated.</div></main><div id="drawer" class="drawer"><div class="panel" id="panel"></div></div></div>`;
-const f=document.querySelector('#filter');f.value=filter;f.onchange=e=>{filter=e.target.value;render()};document.querySelector('#q').oninput=e=>{query=e.target.value;render()};document.querySelector('#xls').onclick=exportXls;document.querySelector('#json').onclick=exportJson;document.querySelector('#print').onclick=()=>window.print();document.querySelector('#themeBtn').onclick=toggleTheme;document.querySelector('#addRec').onclick=openAddRecord;document.querySelector('#bulkAdd').onclick=openBulkAdd;document.querySelector('#dbView').onclick=()=>{view='db';render()};document.querySelector('#rebuild').onclick=serverRebuild;document.querySelector('#importJson').onchange=importJson;document.querySelector('#forSale').onclick=openForSale;document.querySelector('#syncAll').onclick=syncAll;document.querySelector('#calcAll').onclick=calculateAll;document.querySelector('#syncCancel').onclick=()=>{cancelSync=true};document.querySelector('#reset').onclick=()=>{if(confirm('Reset all local edits and restore the original 38-record catalog?')){rows=structuredClone(initial);localStorage.removeItem(STORAGE);render()}};
+const f=document.querySelector('#filter');f.value=filter;f.onchange=e=>{filter=e.target.value;render()};document.querySelector('#q').oninput=e=>{query=e.target.value;render()};
+document.querySelector('#themeBtn').onclick=toggleTheme;
+document.querySelector('#vDb').onclick=()=>{view='db';render()};
+document.querySelector('#vReport').onclick=()=>{view='report';render()};
+document.querySelector('#importJson').onchange=importJson;
+document.querySelector('#syncCancel').onclick=()=>{cancelSync=true};
+const ACTIONS={addRec:openAddRecord,bulkAdd:openBulkAdd,rebuild:serverRebuild,syncAll:syncAll,calcAll:calculateAll,
+  report:()=>{view='report';render()},forSale:openForSale,xls:exportXls,json:exportJson,
+  reset:()=>{if(confirm('Reset all local edits and restore the original 38-record catalog?')){rows=structuredClone(initial);localStorage.removeItem(STORAGE);render()}}};
+app.querySelectorAll('.menu-pop [data-act]').forEach(b=>b.onclick=()=>{closeMenus();ACTIONS[b.dataset.act]?.()});
+app.querySelectorAll('.menu-pop .menu-file').forEach(l=>l.onclick=e=>e.stopPropagation());
+app.querySelectorAll('details.menu').forEach(d=>d.addEventListener('toggle',()=>{if(d.open)document.querySelectorAll('details.menu[open]').forEach(o=>{if(o!==d)o.open=false})}));
+document.addEventListener('click',menuOutside);
 document.querySelectorAll('[data-edit]').forEach(el=>el.onchange=e=>edit(Number(el.dataset.n),el.dataset.edit,e.target.value));document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>openDrawer(Number(b.dataset.open)));document.querySelectorAll('[data-market]').forEach(b=>b.onclick=()=>refreshMarket(Number(b.dataset.market),b));checkStatus();}
 
 function cardHtml(r){const status=r.unresolved?'<span class="tag warn">VERIFY</span>':r.discogsId?'<span class="tag ok">LINKED</span>':'<span class="tag muted">KNOWN</span>';return `<article class="record-card ${r.unresolved?'unresolved':''}"><div class="record-card-head"><div class="record-headline">${r.photo?`<img class="record-photo" src="${esc(r.photo)}" alt="">`:''}<div><div class="record-number">#${r.number}</div><div class="record-title">${esc(r.artist||'Unknown')}</div><div class="record-release">${esc(r.release||'Untitled')}</div></div></div>${status}</div><div class="record-meta"><span>${esc(r.label||'Label unknown')}</span><span>${esc(r.catno||'Cat # unknown')}</span><span>${esc([r.country,r.year].filter(Boolean).join(' · ')||'Year unknown')}</span></div><div class="record-grid"><label>Media<select class="cell-select" data-edit="media" data-n="${r.number}">${['M','NM','VG+','VG','G+','G','F','P'].map(o=>`<option ${r.media===o?'selected':''}>${o}</option>`).join('')}</select></label><label>Sleeve<select class="cell-select" data-edit="sleeve" data-n="${r.number}">${['M','NM','VG+','VG','G+','G','F','P'].map(o=>`<option ${r.sleeve===o?'selected':''}>${o}</option>`).join('')}</select></label><label>For sale<div class="mobile-value">${esc(r.numForSale||'—')}</div></label><label class="price-field${num(r.price)===null?'':' filled'}">Price<input class="cell-input money price-input" data-edit="price" data-n="${r.number}" value="${esc(r.price)}" placeholder="$"></label><label>Discogs ID<input class="cell-input" data-edit="discogsId" data-n="${r.number}" value="${esc(r.discogsId)}" inputmode="numeric"></label></div><div class="record-actions"><button class="btn primary" data-open="${r.number}">Research</button><button class="btn" data-market="${r.number}" ${r.discogsId?'':'disabled'}>Refresh price</button></div></article>`}
@@ -55,6 +71,106 @@ async function loadDetail(id,apply=false){const box=document.querySelector('#det
 box.innerHTML=`<div class="section"><h3>Discogs release</h3><div class="note"><b>${esc(j.artists)}</b> · ${esc(j.title)}<br>${esc([j.labels?.[0]?.name,j.labels?.[0]?.catno,j.country,j.year].filter(Boolean).join(' · '))}${active?.discogsUrl?`<br><a class="discogs-link" target="_blank" href="${esc(active.discogsUrl)}">Open on Discogs</a>`:''}</div></div><div class="section"><h3>Track list</h3><table class="tracks"><tbody>${(j.tracklist||[]).map(t=>`<tr><td style="width:55px">${esc(t.position)}</td><td>${esc(t.title)}</td><td style="width:70px">${esc(t.duration)}</td></tr>`).join('')||'<tr><td>No track list returned.</td></tr>'}</tbody></table></div><div class="section"><h3>Marketplace</h3><button class="btn primary" id="detailPrice">Refresh marketplace stats</button><div id="marketMsg" class="note" style="margin-top:8px"></div></div>`;document.querySelector('#detailPrice').onclick=()=>refreshMarket(active.number,null,true)}catch(e){box.innerHTML=`<div class="section error">${esc(e.message)}</div>`}}
 async function refreshMarket(n,btn,inside=false){const r=rows.find(x=>x.number===n);if(!r?.discogsId)return;if(btn)btn.disabled=true;const msg=inside?document.querySelector('#marketMsg'):null;if(msg)msg.textContent='Checking Discogs marketplace…';try{const res=await fetch('/api/marketplace/'+r.discogsId),j=await res.json();if(!res.ok)throw new Error(j.error||'Marketplace lookup failed');if(j.available){r.numForSale=j.numForSale??'';r.lowestPrice=j.lowestPrice?.value??'';r.currency=j.lowestPrice?.currency??'';r.marketplaceStatus='Available';}
       applyHigh(r,j);if(j.available){if(msg)msg.innerHTML=`<span class="success">${esc(String(r.numForSale||0))} for sale · lowest ${esc(money(r)||'not returned')}</span>`}else{r.marketplaceStatus='Unavailable';if(msg)msg.innerHTML=`<span class="error">Marketplace stats unavailable: ${esc(j.reason||'restricted')}</span>`}localStorage.setItem(STORAGE,JSON.stringify(rows));if(!inside)render()}catch(e){r.marketplaceStatus='Error';if(msg)msg.innerHTML=`<span class="error">${esc(e.message)}</span>`;if(!inside)render()}finally{if(btn)btn.disabled=false}}
+
+// ---------- Report view (annual-report style) ----------
+function reportDate(){return new Date().toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'})}
+function reportStats(){const t=totals();
+  const linkedPct=rows.length?Math.round(t.linked/rows.length*100):0;
+  const verified=rows.filter(r=>!r.unresolved).length;
+  const forSale=rows.filter(r=>num(r.price)!==null).length;
+  const cur=t.currencies.size===1?[...t.currencies][0]:'';
+  return {...t,linkedPct,verified,forSale,cur}}
+function money0(v,cur){return v===null||v===undefined||v===''?'—':`${cur||''}${cur?' ':''}${Number(v).toFixed(2)}`}
+function renderReport(){const st=reportStats();const cur=st.cur;
+  const held=rows.slice().sort((a,b)=>Number(a.number)-Number(b.number));
+  const unresolved=held.filter(r=>r.unresolved);
+  const priced=held.filter(r=>num(r.price)!==null);
+  const byLabel={};for(const r of held){const k=r.label||'Unattributed';(byLabel[k] ||= []).push(r)}
+  const labelRows=Object.entries(byLabel).sort((a,b)=>b[1].length-a[1].length).slice(0,10);
+  app.innerHTML=`<div class="report-shell">
+  <div class="report-bar no-print"><div class="report-bar-inner"><span class="report-bar-title">Collection Report</span>
+    <div class="report-bar-actions"><button class="btn" id="repBack">← Back</button><button class="btn primary" id="repPrint">Print / Save as PDF</button></div></div></div>
+  <article class="report" id="report">
+
+    <section class="rp-cover">
+      <div class="rp-rule-top"></div>
+      <div class="rp-cover-body">
+        <p class="rp-eyebrow">Personal Vinyl Inventory</p>
+        <h1 class="rp-title">Carlos Vinyl<br>Catalog</h1>
+        <p class="rp-standfirst">Collection Report &amp; Schedule of Holdings</p>
+        <p class="rp-date">As at ${esc(reportDate())}</p>
+      </div>
+      <table class="rp-cover-figures"><tbody>
+        <tr><td>Records held</td><td class="rp-fig">${st.total}</td></tr>
+        <tr><td>Identified on Discogs</td><td class="rp-fig">${st.linked}</td></tr>
+        <tr><td>Verified pressings</td><td class="rp-fig">${st.verified}</td></tr>
+        <tr><td>Carrying a price</td><td class="rp-fig">${st.priced}</td></tr>
+        <tr class="rp-total"><td>Total collection price</td><td class="rp-fig">${money0(st.estSum,cur)}</td></tr>
+      </tbody></table>
+      <div class="rp-rule-bottom"></div>
+    </section>
+
+    <section class="rp-section rp-break">
+      <p class="rp-sec-no">Section 01</p>
+      <h2 class="rp-h2">Summary of the collection</h2>
+      <p class="rp-lede">The catalogue comprises ${st.total} records. ${st.linked} of these (${st.linkedPct}%) are matched to an exact Discogs pressing; the remainder are held pending identification and are listed in Section 03.</p>
+      <table class="rp-table rp-kpi"><thead><tr><th>Measure</th><th class="rp-num">Value</th><th>Basis</th></tr></thead><tbody>
+        <tr><td>Records held</td><td class="rp-num">${st.total}</td><td>Physical count</td></tr>
+        <tr><td>Identified on Discogs</td><td class="rp-num">${st.linked}</td><td>Exact pressing matched</td></tr>
+        <tr><td>Awaiting verification</td><td class="rp-num">${st.unresolved}</td><td>Incomplete pressing detail</td></tr>
+        <tr><td>Carrying a price</td><td class="rp-num">${st.priced}</td><td>Discogs high less 20%</td></tr>
+        <tr><td>Sum of Discogs highs</td><td class="rp-num">${money0(st.highSum,cur)}</td><td>Condition-based suggestions</td></tr>
+        <tr><td>Average price per record</td><td class="rp-num">${st.estCount?money0(st.estSum/st.estCount,cur):'—'}</td><td>Priced records only</td></tr>
+        <tr class="rp-total"><td>Total collection price</td><td class="rp-num">${money0(st.estSum,cur)}</td><td>Sum of priced records</td></tr>
+      </tbody></table>
+      ${st.noPrice?`<p class="rp-note"><span class="rp-note-label">Note</span> ${st.noPrice} of ${st.total} records carry no price and are included at nil. The total above is therefore understated and is not a valuation.</p>`:''}
+      ${labelRows.length?`<h3 class="rp-h3">Concentration by label</h3>
+      <table class="rp-table"><thead><tr><th>Label</th><th class="rp-num">Records</th><th class="rp-num">Share</th></tr></thead><tbody>
+      ${labelRows.map(([l,rs])=>`<tr><td>${esc(l)}</td><td class="rp-num">${rs.length}</td><td class="rp-num">${Math.round(rs.length/st.total*100)}%</td></tr>`).join('')}
+      </tbody></table>`:''}
+    </section>
+
+    <section class="rp-section rp-break">
+      <p class="rp-sec-no">Section 02</p>
+      <h2 class="rp-h2">Schedule of holdings</h2>
+      <p class="rp-lede">All ${held.length} records, in catalogue order.</p>
+      <table class="rp-table rp-schedule"><thead><tr>
+        <th class="rp-num">#</th><th>Artist</th><th>Release</th><th>Label</th><th>Cat.&nbsp;no.</th>
+        <th>Country</th><th class="rp-num">Year</th><th>Media</th><th>Sleeve</th><th class="rp-num">Price</th>
+      </tr></thead><tbody>
+      ${held.map(r=>`<tr${r.unresolved?' class="rp-pending"':''}>
+        <td class="rp-num">${esc(r.number)}</td><td>${esc(r.artist||'—')}</td><td>${esc(r.release||'—')}</td>
+        <td>${esc(r.label||'—')}</td><td>${esc(r.catno||'—')}</td><td>${esc(r.country||'—')}</td>
+        <td class="rp-num">${esc(r.year||'—')}</td><td>${esc(r.media||'—')}</td><td>${esc(r.sleeve||'—')}</td>
+        <td class="rp-num">${num(r.price)===null?'—':money0(r.price,r.currency)}</td></tr>`).join('')}
+      </tbody>
+      <tfoot><tr class="rp-total"><td colspan="9">Total — ${priced.length} record${priced.length===1?'':'s'} priced</td><td class="rp-num">${money0(st.estSum,cur)}</td></tr></tfoot>
+      </table>
+    </section>
+
+    ${unresolved.length?`<section class="rp-section rp-break">
+      <p class="rp-sec-no">Section 03</p>
+      <h2 class="rp-h2">Holdings awaiting verification</h2>
+      <p class="rp-lede">${unresolved.length} record${unresolved.length===1?'':'s'} could not be matched to an exact pressing with confidence. They are held at nil and carry only the detail below.</p>
+      <table class="rp-table"><thead><tr><th class="rp-num">#</th><th>Artist</th><th>Release</th><th>Identifying detail</th></tr></thead><tbody>
+      ${unresolved.map(r=>`<tr><td class="rp-num">${esc(r.number)}</td><td>${esc(r.artist||'—')}</td><td>${esc(r.release||'—')}</td><td>${esc(r.tracks||r.label||'No detail recorded')}</td></tr>`).join('')}
+      </tbody></table>
+    </section>`:''}
+
+    <section class="rp-section rp-break">
+      <p class="rp-sec-no">Section ${unresolved.length?'04':'03'}</p>
+      <h2 class="rp-h2">Basis of preparation</h2>
+      <div class="rp-basis">
+        <div><h3 class="rp-h3">Source of data</h3><p>Pressing detail, track listings and marketplace figures are retrieved from the Discogs API against the release identified for each record. Records are matched on an exact catalogue number, or on artist and title appearing together in the release title; anything less certain is left unmatched rather than assumed.</p></div>
+        <div><h3 class="rp-h3">Pricing</h3><p>Price is the Discogs condition-based high-end suggestion less 20%, or a figure entered by hand where one has been supplied. Where Discogs returns no suggestion the record is carried at nil.</p></div>
+        <div><h3 class="rp-h3">Condition</h3><p>Media and sleeve are graded on the Goldmine scale (M, NM, VG+, VG, G+, G, F, P). Grades are the holder's own assessment and are not independently verified.</p></div>
+        <div><h3 class="rp-h3">Limitations</h3><p>This document is a personal inventory record. It is not an appraisal, a valuation, or an offer to sell, and the figures should not be relied upon as any of those. Marketplace figures move continually and are accurate only as at the date shown.</p></div>
+      </div>
+    </section>
+  </article></div>`;
+  document.querySelector('#repBack').onclick=()=>{view='catalog';render()};
+  document.querySelector('#repPrint').onclick=()=>window.print();
+}
 
 // ---------- Database screen (spreadsheet-style) ----------
 const DB_COLS=[
@@ -80,7 +196,7 @@ function dbRows(){const q=query.toLowerCase();
   return rows.filter(r=>!q||DB_COLS.some(c=>String(r[c.k]??'').toLowerCase().includes(q)))}
 function renderDb(){const list=dbRows();
   app.innerHTML=`<div class="shell db-shell"><header class="topbar db-topbar"><div class="brand"><div><div class="eyebrow">Database editor</div><div class="title">Edit all ${rows.length} records</div><div class="subtitle">Every field is editable. Changes save to this device as you type.</div></div><div class="status-wrap"><button class="theme-btn" id="themeBtn" type="button">${theme==='dark'?'☀️ Light mode':'🌙 Dark mode'}</button><button class="theme-btn" id="backBtn" type="button">← Back to catalog</button></div></div></header>
-  <div class="toolbar"><input id="q" placeholder="Filter any column…" value="${esc(query)}">
+  <div class="toolbar"><div class="seg"><button class="seg-btn" id="vCatalog2">Catalog</button><button class="seg-btn on" id="vDb2">Database</button><button class="seg-btn" id="vReport2">Report</button></div><input id="q" placeholder="Filter any column…" value="${esc(query)}">
   <button class="btn primary" id="dbAdd">+ Blank row</button>
   <button class="btn" id="dbDup" ${dbSel.size?'':'disabled'}>Duplicate (${dbSel.size})</button>
   <button class="btn danger" id="dbDel" ${dbSel.size?'':'disabled'}>Delete (${dbSel.size})</button>
@@ -93,6 +209,8 @@ function renderDb(){const list=dbRows();
   <div class="footer-note">${list.length} of ${rows.length} rows shown. Editing here changes the same catalog the main screen uses.</div></main></div>`;
   document.querySelector('#themeBtn').onclick=toggleTheme;
   document.querySelector('#backBtn').onclick=()=>{view='catalog';render()};
+  document.querySelector('#vCatalog2').onclick=()=>{view='catalog';render()};
+  document.querySelector('#vReport2').onclick=()=>{view='report';render()};
   document.querySelector('#q').oninput=e=>{query=e.target.value;renderDb()};
   document.querySelector('#dbAdd').onclick=dbAddBlank;
   document.querySelector('#dbDup').onclick=dbDuplicate;
@@ -282,6 +400,8 @@ function renderAdd(){const d=document.querySelector('#drawer'),p=document.queryS
   document.querySelector('#afGo').onclick=addSearch;
   document.querySelector('#afq').onkeydown=e=>{if(e.key==='Enter')addSearch()};
   document.querySelector('#afSave').onclick=saveDraft}
+function closeMenus(){document.querySelectorAll('details.menu[open]').forEach(d=>d.open=false)}
+function menuOutside(e){if(!e.target.closest('details.menu'))closeMenus()}
 function closeAdd(){adding=false;draft=null;closeDrawer()}
 async function addSearch(){const q=document.querySelector('#afq').value.trim(),msg=document.querySelector('#afMsg'),out=document.querySelector('#afResults');
   if(!q){msg.textContent='Type something to search for first.';return}
