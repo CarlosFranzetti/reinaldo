@@ -14,7 +14,21 @@ A mobile-first personal vinyl catalog preloaded with Carlos's 38 records. The br
 - Add-to-Home-Screen metadata for iPhone
 - No Discogs token stored in frontend JavaScript, localStorage, exports, or Git
 
+## Live deployment
+
+The project is deployed on Vercel and linked to this GitHub repository, so
+every push to `main` deploys automatically.
+
+- Vercel project: `reinaldo` (team `carlosfranzettis-projects`)
+- Production: https://reinaldo.vercel.app
+- `DISCOGS_TOKEN` is configured in Vercel's Environment Variables.
+
+Confirm a deployment is healthy with `GET /api/status`, which must return
+`{"ok":true,"tokenConfigured":true}` and never the token itself.
+
 ## Deploy to Vercel
+
+If you are setting this up from scratch:
 
 1. Put this folder in a GitHub repository.
 2. In Vercel choose **Add New > Project**, import the GitHub repository, and deploy it as an **Other** project. No build command is required.
