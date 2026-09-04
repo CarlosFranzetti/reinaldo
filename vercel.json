@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/api/release/:id", "destination": "/api/release?id=:id" },
+    { "source": "/api/marketplace/:id", "destination": "/api/marketplace?id=:id" }
+  ]
+}
