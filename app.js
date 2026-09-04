@@ -11,13 +11,16 @@ const app=document.querySelector('#app');
 const THEME_KEY='carlos-vinyl-theme';
 let theme=loadTheme();
 let showTotals=false;
-const PRICE_DISCOUNT=0.20;  // Price sits 20% below the Discogs high
+const PRICE_DISCOUNT=0.15;   // Price sits 15% below the high
+const HIGH_MULTIPLE_KEY='carlos-vinyl-high-multiple';
+let highMultiple=loadMultiple();
 let adding=false;
 let view='catalog';  // 'catalog' | 'db'
 const MAX_BULK=20;
 let syncing=false;
 let cancelSync=false;
 
+function loadMultiple(){try{const v=parseFloat(localStorage.getItem(HIGH_MULTIPLE_KEY));if(Number.isFinite(v)&&v>0)return v}catch{}return 3}
 function loadTheme(){try{const t=localStorage.getItem(THEME_KEY);if(t==='dark'||t==='light')return t}catch{}
   return window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}
 function applyTheme(){document.documentElement.dataset.theme=theme;const m=document.querySelector('meta[name=theme-color]');if(m)m.setAttribute('content',theme==='dark'?'#0a1120':'#0d1b2a')}
@@ -36,7 +39,7 @@ function render(){if(view==='db')return renderDb();if(view==='report')return ren
 <div class="toolbar"><div class="seg"><button class="seg-btn on" id="vCatalog">Catalog</button><button class="seg-btn" id="vDb">Database</button><button class="seg-btn" id="vReport">Report</button></div>
 <input id="q" placeholder="Search artist, release, label, catalog number…" value="${esc(query)}"><select id="filter"><option value="all">All records</option><option value="unresolved">Needs verification</option><option value="linked">Discogs linked</option><option value="priced">Priced</option></select>
 <details class="menu"><summary class="btn primary">Add</summary><div class="menu-pop"><button data-act="addRec">Single record…</button><button data-act="bulkAdd">Many at once (up to ${MAX_BULK})…</button></div></details>
-<details class="menu"><summary class="btn">Discogs</summary><div class="menu-pop"><button data-act="rebuild">Rebuild everything from Discogs</button><button data-act="syncAll">Refresh the records I have</button><button data-act="calcAll">Calculate all fields</button></div></details>
+<details class="menu"><summary class="btn">Discogs</summary><div class="menu-pop"><button data-act="rebuild">Rebuild everything from Discogs</button><button data-act="syncAll">Refresh the records I have</button><button data-act="calcAll">Calculate all fields</button><button data-act="basis">Pricing basis…</button></div></details>
 <details class="menu"><summary class="btn">Export</summary><div class="menu-pop"><button data-act="report">Collection report (PDF)…</button><button data-act="forSale">For-sale list…</button><button data-act="xls">Excel spreadsheet</button><button data-act="json">Backup JSON</button><label class="menu-file">Restore from backup…<input type="file" accept="application/json,.json" id="importJson" hidden></label><button data-act="reset" class="danger-item">Reset catalog…</button></div></details></div>
 <div class="sync-bar${syncing?' on':''}" id="syncBar"><div class="sync-text" id="syncText">Preparing…</div><div class="sync-track"><div class="sync-fill" id="syncFill"></div></div><button class="btn" id="syncCancel" type="button">Stop</button><div class="sync-sub" id="syncSub"></div></div>
 <main class="content">${totalsHtml()}<div class="mobile-list">${filtered().map(cardHtml).join('')}${filtered().length?'':'<div class="empty">No records match this filter.</div>'}</div><div class="table-card desktop-table"><div class="table-wrap"><table><thead><tr><th>#</th><th>Artist</th><th>Release</th><th>Label</th><th>Cat #</th><th>Country</th><th>Year</th><th>Media</th><th>Sleeve</th><th>Discogs ID</th><th>For Sale</th><th class="price-col">Price</th><th>Status</th><th class="actions">Actions</th></tr></thead><tbody>${filtered().map(rowHtml).join('')}</tbody></table>${filtered().length?'':'<div class="empty">No records match this filter.</div>'}</div></div><div class="footer-note">Marketplace fields are populated only when Discogs returns them. Missing or restricted values stay blank instead of being estimated.</div></main><div id="drawer" class="drawer"><div class="panel" id="panel"></div></div></div>`;
@@ -48,7 +51,8 @@ document.querySelector('#importJson').onchange=importJson;
 document.querySelector('#syncCancel').onclick=()=>{cancelSync=true};
 const ACTIONS={addRec:openAddRecord,bulkAdd:openBulkAdd,rebuild:serverRebuild,syncAll:syncAll,calcAll:calculateAll,
   report:()=>{view='report';render()},forSale:openForSale,xls:exportXls,json:exportJson,
-  reset:()=>{if(confirm('Reset all local edits and restore the original 38-record catalog?')){rows=structuredClone(initial);localStorage.removeItem(STORAGE);render()}}};
+  reset:async()=>{if(await askConfirm('Reset catalog','All local edits, prices and photos are discarded and the original 38 records restored.',{danger:true,okLabel:'Reset'})){rows=structuredClone(initial);localStorage.removeItem(STORAGE);render();notify('Catalog reset','The original 38 records were restored.')}},
+  basis:setPricingBasis};
 app.querySelectorAll('.menu-pop [data-act]').forEach(b=>b.onclick=()=>{closeMenus();ACTIONS[b.dataset.act]?.()});
 app.querySelectorAll('.menu-pop .menu-file').forEach(l=>l.onclick=e=>e.stopPropagation());
 app.querySelectorAll('details.menu').forEach(d=>d.addEventListener('toggle',()=>{if(d.open)document.querySelectorAll('details.menu[open]').forEach(o=>{if(o!==d)o.open=false})}));
@@ -71,6 +75,35 @@ async function loadDetail(id,apply=false){const box=document.querySelector('#det
 box.innerHTML=`<div class="section"><h3>Discogs release</h3><div class="note"><b>${esc(j.artists)}</b> · ${esc(j.title)}<br>${esc([j.labels?.[0]?.name,j.labels?.[0]?.catno,j.country,j.year].filter(Boolean).join(' · '))}${active?.discogsUrl?`<br><a class="discogs-link" target="_blank" href="${esc(active.discogsUrl)}">Open on Discogs</a>`:''}</div></div><div class="section"><h3>Track list</h3><table class="tracks"><tbody>${(j.tracklist||[]).map(t=>`<tr><td style="width:55px">${esc(t.position)}</td><td>${esc(t.title)}</td><td style="width:70px">${esc(t.duration)}</td></tr>`).join('')||'<tr><td>No track list returned.</td></tr>'}</tbody></table></div><div class="section"><h3>Marketplace</h3><button class="btn primary" id="detailPrice">Refresh marketplace stats</button><div id="marketMsg" class="note" style="margin-top:8px"></div></div>`;document.querySelector('#detailPrice').onclick=()=>refreshMarket(active.number,null,true)}catch(e){box.innerHTML=`<div class="section error">${esc(e.message)}</div>`}}
 async function refreshMarket(n,btn,inside=false){const r=rows.find(x=>x.number===n);if(!r?.discogsId)return;if(btn)btn.disabled=true;const msg=inside?document.querySelector('#marketMsg'):null;if(msg)msg.textContent='Checking Discogs marketplace…';try{const res=await fetch('/api/marketplace/'+r.discogsId),j=await res.json();if(!res.ok)throw new Error(j.error||'Marketplace lookup failed');if(j.available){r.numForSale=j.numForSale??'';r.lowestPrice=j.lowestPrice?.value??'';r.currency=j.lowestPrice?.currency??'';r.marketplaceStatus='Available';}
       applyHigh(r,j);if(j.available){if(msg)msg.innerHTML=`<span class="success">${esc(String(r.numForSale||0))} for sale · lowest ${esc(money(r)||'not returned')}</span>`}else{r.marketplaceStatus='Unavailable';if(msg)msg.innerHTML=`<span class="error">Marketplace stats unavailable: ${esc(j.reason||'restricted')}</span>`}localStorage.setItem(STORAGE,JSON.stringify(rows));if(!inside)render()}catch(e){r.marketplaceStatus='Error';if(msg)msg.innerHTML=`<span class="error">${esc(e.message)}</span>`;if(!inside)render()}finally{if(btn)btn.disabled=false}}
+
+// ---------- In-app dialogs ----------
+// Safari offers "Suppress dialogs" after a couple of native alerts; once a user
+// taps it every confirmation goes silent and the app looks broken. So results
+// and confirmations are rendered in the page instead.
+function notify(title,body,tone='ok'){
+  document.querySelector('#notice')?.remove();
+  const el=document.createElement('div');
+  el.id='notice';el.className=`notice notice-${tone}`;
+  el.innerHTML=`<div class="notice-body"><b>${esc(title)}</b>${body?`<div class="notice-lines">${String(body).split('\n').map(l=>l.trim()?`<div>${esc(l)}</div>`:'<div class="notice-gap"></div>').join('')}</div>`:''}</div><button class="notice-x" aria-label="Dismiss">×</button>`;
+  document.body.appendChild(el);
+  const close=()=>el.remove();
+  el.querySelector('.notice-x').onclick=close;
+  if(tone==='ok')setTimeout(()=>{if(document.body.contains(el))el.classList.add('fade')},9000);
+  return el}
+function askConfirm(title,body,{danger=false,okLabel='Continue',fields=null}={}){
+  return new Promise(resolve=>{
+    document.querySelector('#modal')?.remove();
+    const el=document.createElement('div');el.id='modal';el.className='modal';
+    el.innerHTML=`<div class="modal-card" role="dialog" aria-modal="true"><h3>${esc(title)}</h3>
+      <div class="modal-body">${String(body||'').split('\n').map(l=>l.trim()?`<p>${esc(l)}</p>`:'').join('')}</div>
+      ${fields?`<div class="modal-fields">${fields.map(f=>`<label>${esc(f.label)}<input id="mf_${f.key}" value="${esc(f.value)}" inputmode="decimal"></label>`).join('')}</div>`:''}
+      <div class="modal-actions"><button class="btn" id="mCancel">Cancel</button><button class="btn ${danger?'danger':'primary'}" id="mOk">${esc(okLabel)}</button></div></div>`;
+    document.body.appendChild(el);
+    const done=v=>{const out=v&&fields?Object.fromEntries(fields.map(f=>[f.key,el.querySelector('#mf_'+f.key).value])):v;el.remove();resolve(out)};
+    el.querySelector('#mCancel').onclick=()=>done(false);
+    el.querySelector('#mOk').onclick=()=>done(true);
+    el.onclick=e=>{if(e.target===el)done(false)};
+    el.querySelector('#mOk').focus()})}
 
 // ---------- Report view (annual-report style) ----------
 function reportDate(){return new Date().toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'})}
@@ -118,7 +151,8 @@ function renderReport(){const st=reportStats();const cur=st.cur;
         <tr><td>Records held</td><td class="rp-num">${st.total}</td><td>Physical count</td></tr>
         <tr><td>Identified on Discogs</td><td class="rp-num">${st.linked}</td><td>Exact pressing matched</td></tr>
         <tr><td>Awaiting verification</td><td class="rp-num">${st.unresolved}</td><td>Incomplete pressing detail</td></tr>
-        <tr><td>Carrying a price</td><td class="rp-num">${st.priced}</td><td>Discogs high less 20%</td></tr>
+        <tr><td>Carrying a price</td><td class="rp-num">${st.priced}</td><td>High less ${Math.round(PRICE_DISCOUNT*100)}%</td></tr>
+        <tr><td>&nbsp;&nbsp;of which priced on an estimated high</td><td class="rp-num">${rows.filter(r=>/^Estimated/.test(r.priceBasis||'')).length}</td><td>Lowest listed x${highMultiple}</td></tr>
         <tr><td>Sum of Discogs highs</td><td class="rp-num">${money0(st.highSum,cur)}</td><td>Condition-based suggestions</td></tr>
         <tr><td>Average price per record</td><td class="rp-num">${st.estCount?money0(st.estSum/st.estCount,cur):'—'}</td><td>Priced records only</td></tr>
         <tr class="rp-total"><td>Total collection price</td><td class="rp-num">${money0(st.estSum,cur)}</td><td>Sum of priced records</td></tr>
@@ -136,15 +170,16 @@ function renderReport(){const st=reportStats();const cur=st.cur;
       <p class="rp-lede">All ${held.length} records, in catalogue order.</p>
       <table class="rp-table rp-schedule"><thead><tr>
         <th class="rp-num">#</th><th>Artist</th><th>Release</th><th>Label</th><th>Cat.&nbsp;no.</th>
-        <th>Country</th><th class="rp-num">Year</th><th>Media</th><th>Sleeve</th><th class="rp-num">Price</th>
+        <th>Country</th><th class="rp-num">Year</th><th>Media</th><th>Sleeve</th><th>Price basis</th><th class="rp-num">Price</th>
       </tr></thead><tbody>
       ${held.map(r=>`<tr${r.unresolved?' class="rp-pending"':''}>
         <td class="rp-num">${esc(r.number)}</td><td>${esc(r.artist||'—')}</td><td>${esc(r.release||'—')}</td>
         <td>${esc(r.label||'—')}</td><td>${esc(r.catno||'—')}</td><td>${esc(r.country||'—')}</td>
         <td class="rp-num">${esc(r.year||'—')}</td><td>${esc(r.media||'—')}</td><td>${esc(r.sleeve||'—')}</td>
+        <td class="rp-basis-cell">${esc(r.priceBasis||'—')}</td>
         <td class="rp-num">${num(r.price)===null?'—':money0(r.price,r.currency)}</td></tr>`).join('')}
       </tbody>
-      <tfoot><tr class="rp-total"><td colspan="9">Total — ${priced.length} record${priced.length===1?'':'s'} priced</td><td class="rp-num">${money0(st.estSum,cur)}</td></tr></tfoot>
+      <tfoot><tr class="rp-total"><td colspan="10">Total — ${priced.length} record${priced.length===1?'':'s'} priced</td><td class="rp-num">${money0(st.estSum,cur)}</td></tr></tfoot>
       </table>
     </section>
 
@@ -162,7 +197,7 @@ function renderReport(){const st=reportStats();const cur=st.cur;
       <h2 class="rp-h2">Basis of preparation</h2>
       <div class="rp-basis">
         <div><h3 class="rp-h3">Source of data</h3><p>Pressing detail, track listings and marketplace figures are retrieved from the Discogs API against the release identified for each record. Records are matched on an exact catalogue number, or on artist and title appearing together in the release title; anything less certain is left unmatched rather than assumed.</p></div>
-        <div><h3 class="rp-h3">Pricing</h3><p>Price is the Discogs condition-based high-end suggestion less 20%, or a figure entered by hand where one has been supplied. Where Discogs returns no suggestion the record is carried at nil.</p></div>
+        <div><h3 class="rp-h3">Pricing</h3><p>Price is set at ${Math.round(PRICE_DISCOUNT*100)}% below each record's high. The high is Discogs' condition-based suggestion where available, or a figure entered by hand. Where neither exists the high is estimated as the lowest currently-listed price multiplied by ${highMultiple}; that multiple is an assumption set by the holder, not a market figure, and records priced on that basis are identified in the schedule.</p></div>
         <div><h3 class="rp-h3">Condition</h3><p>Media and sleeve are graded on the Goldmine scale (M, NM, VG+, VG, G+, G, F, P). Grades are the holder's own assessment and are not independently verified.</p></div>
         <div><h3 class="rp-h3">Limitations</h3><p>This document is a personal inventory record. It is not an appraisal, a valuation, or an offer to sell, and the figures should not be relied upon as any of those. Marketplace figures move continually and are accurate only as at the date shown.</p></div>
       </div>
@@ -236,16 +271,17 @@ function dbAddBlank(){rows.push({number:nextNumber(),artist:'',release:'',label:
 function dbDuplicate(){const picked=rows.filter(r=>dbSel.has(r.number));let n=nextNumber();
   for(const r of picked)rows.push({...r,number:n++,photo:''});
   dbSel.clear();save();renderDb()}
-function dbDelete(){const picked=rows.filter(r=>dbSel.has(r.number));
-  if(!confirm(`Delete ${picked.length} record${picked.length===1?'':'s'}? This cannot be undone — export a backup first if you are unsure.`))return;
-  rows=rows.filter(r=>!dbSel.has(r.number));dbSel.clear();save();renderDb()}
-function dbSetGrade(){const g=prompt('Set media and sleeve grade for the selected rows (M, NM, VG+, VG, G+, G, F, P):','VG+');
-  if(!g)return;const up=g.trim().toUpperCase();
-  if(!['M','NM','VG+','VG','G+','G','F','P'].includes(up)){alert('Not a Goldmine grade: '+g);return}
-  for(const r of rows)if(dbSel.has(r.number)){r.media=up;r.sleeve=up}
-  save();renderDb()}
-function dbRenumber(){if(!confirm('Renumber every record 1..'+rows.length+' in the current order?'))return;
-  rows.forEach((r,i)=>{r.number=i+1});dbSel.clear();save();renderDb()}
+async function dbDelete(){const picked=rows.filter(r=>dbSel.has(r.number));
+  if(!await askConfirm(`Delete ${picked.length} record${picked.length===1?'':'s'}?`,'This cannot be undone. Export a backup first if you are unsure.',{danger:true,okLabel:'Delete'}))return;
+  rows=rows.filter(r=>!dbSel.has(r.number));dbSel.clear();save();renderDb();notify('Deleted',`${picked.length} record${picked.length===1?'':'s'} removed.`)}
+async function dbSetGrade(){const r=await askConfirm('Set grade','Applies to media and sleeve on every selected row.',
+    {okLabel:'Apply',fields:[{key:'g',label:'Goldmine grade (M, NM, VG+, VG, G+, G, F, P)',value:'VG+'}]});
+  if(!r)return;const up=String(r.g).trim().toUpperCase();
+  if(!['M','NM','VG+','VG','G+','G','F','P'].includes(up)){notify('Not a Goldmine grade',`"${r.g}" is not one of M, NM, VG+, VG, G+, G, F or P.`,'bad');return}
+  let n=0;for(const r of rows)if(dbSel.has(r.number)){r.media=up;r.sleeve=up;n++}
+  save();renderDb();notify('Grades set',`${n} record${n===1?'':'s'} set to ${up}.`)}
+async function dbRenumber(){if(!await askConfirm('Renumber records',`Every record will be renumbered 1 to ${rows.length} in the current order.`,{okLabel:'Renumber'}))return;
+  rows.forEach((r,i)=>{r.number=i+1});dbSel.clear();save();renderDb();notify('Renumbered',`${rows.length} records renumbered.`)}
 
 // ---------- Import a catalogue ----------
 async function importJson(e){const file=e.target.files?.[0];if(!file)return;e.target.value='';
@@ -254,12 +290,12 @@ async function importJson(e){const file=e.target.files?.[0];if(!file)return;e.ta
     if(!Array.isArray(incoming)||!incoming.length)throw new Error('That file has no record array in it.');
     const bad=incoming.find(r=>typeof r!=='object'||r===null);
     if(bad)throw new Error('That file contains something that is not a record.');
-    if(!confirm(`Replace the current ${rows.length} records with ${incoming.length} from this file?\n\nExport a backup first if you have edits you want to keep.`))return;
+    if(!await askConfirm('Restore from backup',`Replace the current ${rows.length} records with ${incoming.length} from this file?\nExport a backup first if you have edits you want to keep.`,{danger:true,okLabel:'Replace'}))return;
     rows=incoming.map((r,i)=>migrate({number:r.number??i+1,artist:'',release:'',label:'',catno:'',country:'',year:'',tracks:'',unresolved:false,
       discogsId:'',media:'VG+',sleeve:'VG+',numForSale:'',lowestPrice:'',highestPrice:'',highestCondition:'',currency:'',price:'',photo:'',discogsUrl:'',marketplaceStatus:'Pending',...r}));
     save();view='catalog';render();
-    alert(`Imported ${rows.length} records.`)}
-  catch(err){alert('Import failed: '+err.message)}}
+    notify('Backup restored',`${rows.length} records imported.`)}
+  catch(err){notify('Import failed',err.message,'bad')}}
 
 // ---------- Bulk add (up to MAX_BULK at once) ----------
 let bulk=[];
@@ -320,7 +356,7 @@ async function saveBulk(){const msg=document.querySelector('#bkMsg'),btn=documen
     try{localStorage.setItem(STORAGE,JSON.stringify(rows))}catch{}
     msg.innerHTML='<span class="error">Storage was full, so photos on the new records were dropped. The records were kept.</span>'}
   closeBulk();render();
-  alert(`Added ${added} record${added===1?'':'s'}.${linked?`\n${linked} matched on Discogs.`:''}${failed?`\n${failed} lookup${failed===1?'':'s'} failed.`:''}\n\nBulk lookups take the first Discogs result, so check them before selling — open each one with Research to pick an exact pressing.`)}
+  notify('Records added',`${added} record${added===1?'':'s'} added.${linked?`\n${linked} matched on Discogs.`:''}${failed?`\n${failed} lookup${failed===1?'':'s'} failed.`:''}\n\nBulk lookups take the first Discogs result, so check them with Research before selling.`,'warn')}
 
 // ---------- Server-side rebuild ----------
 // /api/enrich does the Discogs work on the server in slices, so the phone
@@ -328,8 +364,8 @@ async function saveBulk(){const msg=document.querySelector('#bkMsg'),btn=documen
 // so it replaces local edits — hence the warning and the backup prompt.
 async function serverRebuild(){
   const st=await api('/api/status').catch(()=>null);
-  if(!st?.tokenConfigured){alert('Discogs is not connected, so there is nothing to rebuild from.');return}
-  if(!confirm('Rebuild every record from Discogs?\n\nThis replaces the current catalog — including your own edits, prices and photos — with freshly fetched data for the original 38 records.\n\nExport a Backup JSON first if you want to keep what is here.'))return;
+  if(!st?.tokenConfigured){notify('Discogs is not connected','Add DISCOGS_TOKEN in Vercel and redeploy, then try again.','bad');return}
+  if(!await askConfirm('Rebuild every record from Discogs?','This replaces the current catalog — including your own edits, prices and photos — with freshly fetched data for the original 38 records.\nExport a Backup JSON first if you want to keep what is here.',{danger:true,okLabel:'Rebuild'}))return;
   syncing=true;cancelSync=false;render();
   const out=[],notes=[];let start=0,total=38,guard=0;
   try{
@@ -344,15 +380,15 @@ async function serverRebuild(){
       if(j.rateLimited){progress(out.length,total,'Discogs rate limit — waiting…');await sleep(20000)}
       start=j.next;
     }
-  }catch(e){syncing=false;render();alert('Rebuild stopped: '+e.message+'\n\nNothing was changed.');return}
-  if(!out.length){syncing=false;render();alert('Nothing came back from the server. Nothing was changed.');return}
+  }catch(e){syncing=false;render();notify('Rebuild stopped',e.message+'\nNothing was changed.','bad');return}
+  if(!out.length){syncing=false;render();notify('Rebuild stopped','Nothing came back from the server, so nothing was changed.','bad');return}
   rows=out.map(migrate);syncing=false;showTotals=true;
   try{localStorage.setItem(STORAGE,JSON.stringify(rows))}catch{}
   render();
   const linked=notes.filter(n=>n.linked).length, matched=notes.filter(n=>n.matched).length;
   const noMatch=notes.filter(n=>!n.matched).length;
   const reasons=[...new Set(out.map(r=>r.suggestionsReason).filter(Boolean))];
-  alert(`Rebuilt ${out.length} records from Discogs.\n\n${matched} matched to a pressing\n${linked} newly linked\n${noMatch} left unlinked (no confident match)\n\n${reasons.length?'Prices are blank because Discogs said: "'+reasons[0]+'"':'Prices filled where Discogs returned a high-end suggestion.'}${cancelSync?'\n\nStopped early.':''}`)}
+  notify('Rebuilt from Discogs',`${out.length} records rebuilt.\n\n${matched} matched to a pressing\n${linked} newly linked\n${noMatch} left unlinked (no confident match)\n\n${reasons.length?'No Discogs condition-based high: "'+reasons[0]+'" — Calculate all fields will price these from the lowest listed instead.':'Highs returned by Discogs.'}${cancelSync?'\nStopped early.':''}`,reasons.length?'warn':'ok')}
 
 // ---------- Add a record ----------
 let draft=null;
@@ -437,28 +473,38 @@ function saveDraft(){const msg=document.querySelector('#afSaveMsg');
       catch{rows.pop();msg.innerHTML='<span class="error">This device\'s storage is full. Export a backup and reset the catalog to free space.</span>';return}}
     else{rows.pop();msg.innerHTML='<span class="error">This device\'s storage is full. Export a backup to free space.</span>';return}}
   closeAdd();render();
-  alert(`Added #${rec.number}: ${rec.artist||'Unknown'} — ${rec.release||'Untitled'}${rec.price?`\nPrice ${rec.currency||'$'} ${rec.price}`:''}`)}
+  notify('Record added',`#${rec.number}  ${rec.artist||'Unknown'} — ${rec.release||'Untitled'}${rec.price?`\nPrice ${rec.currency||'$'} ${rec.price}`:''}`)}
 
 // ---------- Asking prices and for-sale sheet ----------
 function applyHigh(r,j){const h=j.highest;if(h&&Number.isFinite(Number(h.value))){r.highestPrice=Number(h.value);r.highestCondition=h.condition||'';if(!r.currency&&h.currency)r.currency=h.currency}
   else{r.highestPrice='';r.highestCondition='';r.suggestionsReason=j.suggestionsReason||''}}
 function highMoney(r){const h=num(r.highestPrice);return h===null?'':`${r.currency||'$'} ${h.toFixed(2)}`}
 function round2(v){return Math.round(v*100)/100}
-// Price = the Discogs high-end suggestion less 20%. The high anchor comes from
-// Discogs' condition-based price suggestions; without it there is nothing to
-// discount from, so the price is left blank rather than invented.
-function priceTarget(r){const high=num(r.highestPrice);
-  if(high===null)return null;
-  return round2(high*(1-PRICE_DISCOUNT))}
+// A record's high anchor, in order of preference:
+//   1. Discogs' condition-based price suggestion (needs seller settings)
+//   2. a high typed in by hand
+//   3. an estimate: the lowest currently-listed price times a multiple you set
+// Only the first two are market figures. The third is an assumption, so records
+// priced that way are tagged and counted separately everywhere they appear.
+function highAnchor(r){
+  const high=num(r.highestPrice);
+  if(high!==null)return{value:high,basis:r.highestCondition?'Discogs suggestion':'Entered by hand',estimated:false};
+  const low=num(r.lowestPrice);
+  if(low!==null&&highMultiple>0)return{value:round2(low*highMultiple),basis:`Estimated: lowest listed x${highMultiple}`,estimated:true};
+  return null}
+function priceTarget(r){const a=highAnchor(r);return a===null?null:round2(a.value*(1-PRICE_DISCOUNT))}
+
 // "Calculate all" fills every derived field it can, then shows the totals.
-function calculateAll(){let priceSet=0,noHigh=0,unchanged=0,graded=0,statusSet=0,resolved=0;
+function calculateAll(){let priceSet=0,noHigh=0,unchanged=0,graded=0,statusSet=0,resolved=0,estimated=0;
   for(const r of rows){
     if(!r.media)  {r.media='VG+';graded++}
     if(!r.sleeve) {r.sleeve='VG+';graded++}
     if(r.currency===''&&num(r.highestPrice)!==null)r.currency='USD';
-    const t=priceTarget(r);
-    if(t===null)noHigh++;
-    else{const cur=num(r.price);
+    const a=highAnchor(r);
+    if(a===null){noHigh++;r.priceBasis=''}
+    else{r.priceBasis=a.basis;if(a.estimated)estimated++;
+      if(!num(r.highestPrice))r.highEstimate=a.value.toFixed(2);
+      const t=round2(a.value*(1-PRICE_DISCOUNT)),cur=num(r.price);
       if(cur!==null&&Math.abs(cur-t)<0.005)unchanged++;
       else{r.price=t.toFixed(2);priceSet++}}
     const complete=Boolean(r.artist&&r.release&&r.label&&r.catno&&r.year);
@@ -466,12 +512,29 @@ function calculateAll(){let priceSet=0,noHigh=0,unchanged=0,graded=0,statusSet=0
     if(!r.marketplaceStatus){r.marketplaceStatus=r.discogsId?'Linked':'Pending';statusSet++}}
   save();showTotals=true;render();
   document.querySelector('#totals')?.scrollIntoView({behavior:'smooth',block:'nearest'});
-  let why='';
-  if(noHigh){const reasons=rows.map(r=>r.suggestionsReason).filter(Boolean);
-    const top=reasons.length?reasons.sort((a,b)=>reasons.filter(x=>x===b).length-reasons.filter(x=>x===a).length)[0]:'';
-    why=top?`\n\nDiscogs says: "${top}"${/seller settings/i.test(top)?'\n\nCondition-based price suggestions are only released to accounts with Discogs seller settings completed. Fill those out at discogs.com/settings/seller, then run "Refresh all from Discogs" and calculate again.':''}`
-           :'\n\nRun "Refresh all from Discogs" first so each record has a high-end figure to discount from.'}
-  alert(`Calculated everything.\n\n${priceSet} price${priceSet===1?'':'s'} set at 20% below the Discogs high\n${unchanged} already at that price\n${noHigh} skipped — no Discogs high to discount from\n${graded} missing grade${graded===1?'':'s'} defaulted to VG+\n${resolved} marked resolved\n${statusSet} status field${statusSet===1?'':'s'} filled${why}`)}
+  const t=totals();const cur=t.currencies.size===1?[...t.currencies][0]:'';
+  const lines=[
+    `${priceSet} price${priceSet===1?'':'s'} set at ${Math.round(PRICE_DISCOUNT*100)}% below the high`,
+    unchanged?`${unchanged} already at that price`:'',
+    estimated?`${estimated} of those use an estimated high (lowest listed x${highMultiple}) — change it under Discogs > Pricing basis`:'',
+    noHigh?`${noHigh} skipped — no price data from Discogs at all`:'',
+    graded?`${graded} missing grade${graded===1?'':'s'} defaulted to VG+`:'',
+    resolved?`${resolved} marked resolved`:'',
+    '',
+    `Total collection price  ${cur?cur+' ':''}${t.estSum.toFixed(2)}`,
+    `Average per priced record  ${t.estCount?(cur?cur+' ':'')+(t.estSum/t.estCount).toFixed(2):'—'}`
+  ].filter(x=>x!=='' || true).join('\n');
+  notify('Calculated everything',lines,estimated?'warn':'ok')}
+
+async function setPricingBasis(){
+  const r=await askConfirm('Pricing basis',
+    `Price is set at ${Math.round(PRICE_DISCOUNT*100)}% below each record's high.\nWhere Discogs gives no condition-based high, the app estimates one by multiplying the lowest currently-listed price.\nThat multiple is an assumption, not a market figure. Set it to 0 to leave those records blank instead.`,
+    {okLabel:'Save',fields:[{key:'mult',label:'Estimated high = lowest listed x',value:String(highMultiple)}]});
+  if(!r)return;
+  const v=parseFloat(r.mult);
+  if(!Number.isFinite(v)||v<0){notify('Not a number',`"${r.mult}" is not a multiple I can use.`,'bad');return}
+  highMultiple=v;try{localStorage.setItem(HIGH_MULTIPLE_KEY,String(v))}catch{}
+  notify('Pricing basis saved',v?`Estimated highs are now the lowest listed price x${v}. Run Calculate all fields to apply it.`:'Records without a Discogs high will be left blank. Run Calculate all fields to apply it.')}
 
 function forSaleRows(){return rows.filter(r=>num(r.price)!==null)}
 function listingLine(r){const bits=[r.label,r.catno,r.country,r.year].filter(Boolean).join(', ');
@@ -543,7 +606,7 @@ function progress(done,total,label){const bar=document.querySelector('#syncBar')
   if(!bar)return;bar.classList.add('on');fill.style.width=`${total?Math.round(done/total*100):0}%`;txt.textContent=`${done} / ${total}`;sub.textContent=label||''}
 async function syncAll(){if(syncing)return;
   const st=await api('/api/status').catch(()=>null);
-  if(!st?.tokenConfigured){alert('Discogs is not connected, so there is nothing to refresh. Add DISCOGS_TOKEN in Vercel and redeploy.');return}
+  if(!st?.tokenConfigured){notify('Discogs is not connected','Add DISCOGS_TOKEN in Vercel and redeploy, then try again.','bad');return}
   syncing=true;cancelSync=false;render();
   const list=rows.slice();let done=0,linked=0,pricedN=0,highN=0,noMatch=0,failed=0,skipped=0;
   for(const r of list){
@@ -580,7 +643,7 @@ async function syncAll(){if(syncing)return;
   if(skipped)parts.push(`${skipped} skipped (nothing to search on)`);
   if(failed)parts.push(`${failed} failed`);
   if(cancelSync)parts.push('stopped early');
-  alert('Discogs refresh finished.\n\n'+parts.join('\n'));
+  notify('Discogs refresh finished',parts.join('\n'));
 }
 
 function exportJson(){download('Carlos_Vinyl_Inventory.json',JSON.stringify(rows,null,2),'application/json')}
