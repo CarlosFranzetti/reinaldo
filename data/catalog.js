@@ -1,4 +1,6 @@
-// Seed catalogue shared by the browser app and the /api/enrich function.
+// Seed catalogue and pricing rule, shared by the browser app and the
+// /api/enrich function so the two can never drift apart.
+export const PRICE_DISCOUNT = 0.15;   // Price sits 15% below the high
 // Columns: number, artist, release, label, catno, country, year, tracks, unresolved
 export const seed = [
 [1,'Viola','Little Girl','Nervous Records','NE 20478','US','2001','Club Mix; Put Cha Dub; A Small Dub 6:20; Warm Demo Mix 8:31',false],

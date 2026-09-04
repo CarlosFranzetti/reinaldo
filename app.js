@@ -1,4 +1,4 @@
-import { seed, toRecord } from '/data/catalog.js';
+import { seed, toRecord, PRICE_DISCOUNT } from '/data/catalog.js';
 
 const initial = seed.map(toRecord);
 
@@ -11,7 +11,6 @@ const app=document.querySelector('#app');
 const THEME_KEY='carlos-vinyl-theme';
 let theme=loadTheme();
 let showTotals=false;
-const PRICE_DISCOUNT=0.15;   // Price sits 15% below the high
 const HIGH_MULTIPLE_KEY='carlos-vinyl-high-multiple';
 let highMultiple=loadMultiple();
 let adding=false;
@@ -35,7 +34,7 @@ function money(r){const v=num(r.price);return v===null?'':`${r.currency||'$'} ${
 function counts(){return{total:rows.length,resolved:rows.filter(r=>!r.unresolved).length,unresolved:rows.filter(r=>r.unresolved).length,priced:rows.filter(r=>num(r.price)!==null).length}}
 function filtered(){return rows.filter(r=>{const f=filter==='all'||(filter==='unresolved'&&r.unresolved)||(filter==='priced'&&num(r.price)!==null)||(filter==='linked'&&r.discogsId);const hay=[r.number,r.artist,r.release,r.label,r.catno,r.country,r.year].join(' ').toLowerCase();return f&&hay.includes(query.toLowerCase())})}
 
-function render(){if(view==='db')return renderDb();if(view==='report')return renderReport();const c=counts();app.innerHTML=`<div class="shell"><header class="topbar"><div class="brand"><div><div class="eyebrow">Personal Vinyl Inventory</div><div class="title">Carlos Vinyl Catalog</div><div class="subtitle">Discogs-assisted research, grading, pricing and export</div></div><div class="status-wrap"><div class="status"><span id="tokenDot" class="dot"></span><span id="tokenText">Checking Discogs connection…</span></div><button class="theme-btn" id="themeBtn" type="button" aria-pressed="${theme==='dark'}">${theme==='dark'?'☀️ Light mode':'🌙 Dark mode'}</button></div></div><div class="metrics"><div class="metric"><b>${c.total}</b><span>Total records</span></div><div class="metric"><b>${c.resolved}</b><span>Resolved</span></div><div class="metric"><b>${c.unresolved}</b><span>Needs verification</span></div><div class="metric"><b>${c.priced}</b><span>Marketplace priced</span></div></div></header>
+function render(){if(view==='db')return renderDb();if(view==='report')return renderReport();const c=counts();app.innerHTML=`<div class="shell"><header class="topbar"><div class="brand"><div><div class="eyebrow">Personal Vinyl Inventory</div><div class="title">Carlos Vinyl Catalog</div><div class="subtitle">Discogs-assisted research, grading, pricing and export</div></div><div class="status-wrap"><div class="status"><span id="tokenDot" class="dot"></span><span id="tokenText">Checking Discogs connection…</span></div><button class="theme-btn" id="themeBtn" type="button" aria-pressed="${theme==='dark'}">${theme==='dark'?'☀️ Light mode':'🌙 Dark mode'}</button></div></div><div class="metrics"><div class="metric"><b>${c.total}</b><span>Total records</span></div><div class="metric"><b>${c.resolved}</b><span>Resolved</span></div><div class="metric"><b>${c.unresolved}</b><span>Needs verification</span></div><div class="metric"><b>${c.priced}</b><span>Priced</span></div></div></header>
 <div class="toolbar"><div class="seg"><button class="seg-btn on" id="vCatalog">Catalog</button><button class="seg-btn" id="vDb">Database</button><button class="seg-btn" id="vReport">Report</button></div>
 <input id="q" placeholder="Search artist, release, label, catalog number…" value="${esc(query)}"><select id="filter"><option value="all">All records</option><option value="unresolved">Needs verification</option><option value="linked">Discogs linked</option><option value="priced">Priced</option></select>
 <details class="menu"><summary class="btn primary">Add</summary><div class="menu-pop"><button data-act="addRec">Single record…</button><button data-act="bulkAdd">Many at once (up to ${MAX_BULK})…</button></div></details>
@@ -74,7 +73,7 @@ async function pickRelease(id){if(!active)return;active.discogsId=String(id);awa
 async function loadDetail(id,apply=false){const box=document.querySelector('#detail');if(!box)return;box.innerHTML='<div class="section"><div class="note">Loading release details…</div></div>';try{const r=await fetch('/api/release/'+id),j=await r.json();if(!r.ok)throw new Error(j.error||'Release lookup failed');if(apply&&active){active.artist=j.artists||active.artist;active.release=j.title||active.release;active.year=String(j.year||active.year);active.country=j.country||active.country;if(j.labels?.[0]){active.label=j.labels[0].name||active.label;active.catno=j.labels[0].catno||active.catno}active.discogsUrl=j.uri?`https://www.discogs.com${j.uri}`:'';active.tracks=(j.tracklist||[]).map(t=>`${t.position} ${t.title}${t.duration?' '+t.duration:''}`.trim()).join('; ');active.unresolved=false}
 box.innerHTML=`<div class="section"><h3>Discogs release</h3><div class="note"><b>${esc(j.artists)}</b> · ${esc(j.title)}<br>${esc([j.labels?.[0]?.name,j.labels?.[0]?.catno,j.country,j.year].filter(Boolean).join(' · '))}${active?.discogsUrl?`<br><a class="discogs-link" target="_blank" href="${esc(active.discogsUrl)}">Open on Discogs</a>`:''}</div></div><div class="section"><h3>Track list</h3><table class="tracks"><tbody>${(j.tracklist||[]).map(t=>`<tr><td style="width:55px">${esc(t.position)}</td><td>${esc(t.title)}</td><td style="width:70px">${esc(t.duration)}</td></tr>`).join('')||'<tr><td>No track list returned.</td></tr>'}</tbody></table></div><div class="section"><h3>Marketplace</h3><button class="btn primary" id="detailPrice">Refresh marketplace stats</button><div id="marketMsg" class="note" style="margin-top:8px"></div></div>`;document.querySelector('#detailPrice').onclick=()=>refreshMarket(active.number,null,true)}catch(e){box.innerHTML=`<div class="section error">${esc(e.message)}</div>`}}
 async function refreshMarket(n,btn,inside=false){const r=rows.find(x=>x.number===n);if(!r?.discogsId)return;if(btn)btn.disabled=true;const msg=inside?document.querySelector('#marketMsg'):null;if(msg)msg.textContent='Checking Discogs marketplace…';try{const res=await fetch('/api/marketplace/'+r.discogsId),j=await res.json();if(!res.ok)throw new Error(j.error||'Marketplace lookup failed');if(j.available){r.numForSale=j.numForSale??'';r.lowestPrice=j.lowestPrice?.value??'';r.currency=j.lowestPrice?.currency??'';r.marketplaceStatus='Available';}
-      applyHigh(r,j);if(j.available){if(msg)msg.innerHTML=`<span class="success">${esc(String(r.numForSale||0))} for sale · lowest ${esc(money(r)||'not returned')}</span>`}else{r.marketplaceStatus='Unavailable';if(msg)msg.innerHTML=`<span class="error">Marketplace stats unavailable: ${esc(j.reason||'restricted')}</span>`}localStorage.setItem(STORAGE,JSON.stringify(rows));if(!inside)render()}catch(e){r.marketplaceStatus='Error';if(msg)msg.innerHTML=`<span class="error">${esc(e.message)}</span>`;if(!inside)render()}finally{if(btn)btn.disabled=false}}
+      applyHigh(r,j);repriceRecord(r);if(j.available){if(msg)msg.innerHTML=`<span class="success">${esc(String(r.numForSale||0))} for sale · price ${esc(money(r)||'not set')}${r.priceBasis?` (${esc(r.priceBasis)})`:''}</span>`}else{r.marketplaceStatus='Unavailable';if(msg)msg.innerHTML=`<span class="error">Marketplace stats unavailable: ${esc(j.reason||'restricted')}</span>`}localStorage.setItem(STORAGE,JSON.stringify(rows));if(!inside)render()}catch(e){r.marketplaceStatus='Error';if(msg)msg.innerHTML=`<span class="error">${esc(e.message)}</span>`;if(!inside)render()}finally{if(btn)btn.disabled=false}}
 
 // ---------- In-app dialogs ----------
 // Safari offers "Suppress dialogs" after a couple of native alerts; once a user
@@ -476,7 +475,7 @@ function saveDraft(){const msg=document.querySelector('#afSaveMsg');
   notify('Record added',`#${rec.number}  ${rec.artist||'Unknown'} — ${rec.release||'Untitled'}${rec.price?`\nPrice ${rec.currency||'$'} ${rec.price}`:''}`)}
 
 // ---------- Asking prices and for-sale sheet ----------
-function applyHigh(r,j){const h=j.highest;if(h&&Number.isFinite(Number(h.value))){r.highestPrice=Number(h.value);r.highestCondition=h.condition||'';if(!r.currency&&h.currency)r.currency=h.currency}
+function applyHigh(r,j){const h=j.highest;if(h&&Number.isFinite(Number(h.value))){r.highestPrice=Number(h.value);r.highestCondition=h.condition||'';r.suggestionsReason='';if(!r.currency&&h.currency)r.currency=h.currency}
   else{r.highestPrice='';r.highestCondition='';r.suggestionsReason=j.suggestionsReason||''}}
 function highMoney(r){const h=num(r.highestPrice);return h===null?'':`${r.currency||'$'} ${h.toFixed(2)}`}
 function round2(v){return Math.round(v*100)/100}
@@ -493,6 +492,11 @@ function highAnchor(r){
   if(low!==null&&highMultiple>0)return{value:round2(low*highMultiple),basis:`Estimated: lowest listed x${highMultiple}`,estimated:true};
   return null}
 function priceTarget(r){const a=highAnchor(r);return a===null?null:round2(a.value*(1-PRICE_DISCOUNT))}
+// Applied wherever a record's Discogs figures change, so Price and its basis
+// never lag behind the data they are derived from.
+function repriceRecord(r){const a=highAnchor(r);
+  if(a===null){r.priceBasis='';return false}
+  r.priceBasis=a.basis;r.price=round2(a.value*(1-PRICE_DISCOUNT)).toFixed(2);return true}
 
 // "Calculate all" fills every derived field it can, then shows the totals.
 function calculateAll(){let priceSet=0,noHigh=0,unchanged=0,graded=0,statusSet=0,resolved=0,estimated=0;
@@ -503,7 +507,6 @@ function calculateAll(){let priceSet=0,noHigh=0,unchanged=0,graded=0,statusSet=0
     const a=highAnchor(r);
     if(a===null){noHigh++;r.priceBasis=''}
     else{r.priceBasis=a.basis;if(a.estimated)estimated++;
-      if(!num(r.highestPrice))r.highEstimate=a.value.toFixed(2);
       const t=round2(a.value*(1-PRICE_DISCOUNT)),cur=num(r.price);
       if(cur!==null&&Math.abs(cur-t)<0.005)unchanged++;
       else{r.price=t.toFixed(2);priceSet++}}
@@ -628,6 +631,7 @@ async function syncAll(){if(syncing)return;
       if(m.available){r.numForSale=m.numForSale??'';r.lowestPrice=m.lowestPrice?.value??'';r.currency=m.lowestPrice?.currency??'';r.marketplaceStatus='Available';if(m.lowestPrice)pricedN++}
       else{r.marketplaceStatus='Unavailable'}
       if(r.highestPrice!==''&&r.highestPrice!=null)highN++;
+      repriceRecord(r);
     }catch(e){failed++;r.marketplaceStatus=e.status===429?'Rate limited':'Error'}
     done++;progress(done,list.length,`${r.artist||'Unknown'} — ${r.release||'untitled'}`);
     try{localStorage.setItem(STORAGE,JSON.stringify(rows))}catch{}

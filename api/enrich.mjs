@@ -1,5 +1,5 @@
 import { discogsFetch, handleError, sendJson } from './_lib/discogs.mjs';
-import { seed, toRecord } from '../data/catalog.js';
+import { seed, toRecord, PRICE_DISCOUNT } from '../data/catalog.js';
 
 const MAX_COUNT = 6;
 
@@ -81,8 +81,9 @@ async function enrichOne(record) {
     if (entries.length) {
       record.highestPrice = entries[0].value;
       record.highestCondition = entries[0].condition;
+      record.priceBasis = 'Discogs suggestion';
       if (!record.currency) record.currency = entries[0].currency;
-      record.price = (Math.round(entries[0].value * 0.8 * 100) / 100).toFixed(2);
+      record.price = (Math.round(entries[0].value * (1 - PRICE_DISCOUNT) * 100) / 100).toFixed(2);
     }
   } catch (err) {
     record.suggestionsReason = err.message || 'Price suggestions unavailable';

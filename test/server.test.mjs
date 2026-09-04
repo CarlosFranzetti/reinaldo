@@ -61,3 +61,14 @@ test('refuses dotfiles and server sources', async () => {
     }
   });
 });
+
+test('serves the shared catalogue module the app imports', async () => {
+  await withServer(async (base) => {
+    const res = await fetch(`${base}/data/catalog.js`);
+    assert.equal(res.status, 200, '/data/catalog.js must be served or the app cannot boot');
+    assert.match(res.headers.get('content-type'), /javascript/);
+    const text = await res.text();
+    assert.match(text, /export const seed/);
+    assert.match(text, /export const PRICE_DISCOUNT/);
+  });
+});

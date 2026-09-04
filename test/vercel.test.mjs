@@ -84,3 +84,26 @@ test('enrich rejects an out-of-range start without calling Discogs', async () =>
     if (previous !== undefined) process.env.DISCOGS_TOKEN = previous;
   }
 });
+
+test('the pricing rule has a single definition shared by app and API', async () => {
+  const { PRICE_DISCOUNT } = await import('../data/catalog.js');
+  assert.equal(typeof PRICE_DISCOUNT, 'number');
+  const fs = await import('node:fs/promises');
+  for (const file of ['../app.js', '../api/enrich.mjs']) {
+    const src = await fs.readFile(new URL(file, import.meta.url), 'utf8');
+    assert.match(src, /PRICE_DISCOUNT\s*\}?\s*from\s*['"][./]*\/?data\/catalog\.js['"]/,
+      `${file} must import the shared discount`);
+    assert.doesNotMatch(src, /\*\s*0\.8\b/, `${file} must not hard-code an old discount`);
+  }
+});
+
+test('the seed catalogue is the only copy of the records', async () => {
+  const { seed, toRecord } = await import('../data/catalog.js');
+  assert.equal(seed.length, 38);
+  const fs = await import('node:fs/promises');
+  const app = await fs.readFile(new URL('../app.js', import.meta.url), 'utf8');
+  assert.match(app, /import \{ seed, toRecord, PRICE_DISCOUNT \} from '\/data\/catalog\.js'/);
+  const r = toRecord(seed[0]);
+  for (const k of ['price', 'photo', 'highestPrice', 'discogsId']) assert.ok(k in r, `record needs ${k}`);
+  assert.ok(!('askingPrice' in r), 'askingPrice was replaced by price');
+});
