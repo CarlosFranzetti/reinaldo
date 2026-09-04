@@ -66,13 +66,13 @@
 [data-theme="dark"] .empty,[data-theme="dark"] .footer-note{color:var(--muted)}
 
 /* ---------- Asking-price highlight and for-sale sheet ---------- */
-.ask-col{color:#1f4e8c!important}
-td.ask-cell{background:#eef4ff!important;border-left:2px solid var(--blue);border-right:2px solid var(--blue)}
-td.ask-cell.filled{background:#e2ecff!important}
-td.ask-cell .ask-input{font-weight:800;color:#123a75}
-.ask-field .cell-input{border-color:var(--blue)!important;background:#eef4ff!important;font-weight:800;color:#123a75}
-.ask-field.filled .cell-input{background:#e2ecff!important}
-.ask-field{color:var(--blue)!important}
+.price-col{color:#1f4e8c!important}
+td.price-cell{background:#eef4ff!important;border-left:2px solid var(--blue);border-right:2px solid var(--blue)}
+td.price-cell.filled{background:#e2ecff!important}
+td.price-cell .price-input{font-weight:800;color:#123a75}
+.price-field .cell-input{border-color:var(--blue)!important;background:#eef4ff!important;font-weight:800;color:#123a75}
+.price-field.filled .cell-input{background:#e2ecff!important}
+.price-field{color:var(--blue)!important}
 .sale-total{display:flex;flex-direction:column;gap:2px;margin-bottom:12px}
 .sale-total b{font-size:26px;font-variant-numeric:tabular-nums}
 .sale-total span{font-size:11px;color:var(--muted)}
@@ -84,11 +84,27 @@ td.ask-cell .ask-input{font-weight:800;color:#123a75}
 .sale-price{font-weight:800;font-variant-numeric:tabular-nums;color:var(--blue);white-space:nowrap}
 .sale-meta{font-size:11px;color:var(--muted);margin-top:3px}
 @media(max-width:800px){.sale-actions .btn{flex:1}}
-@media print{.ask-col,td.ask-cell{border:0!important;background:#f0f0f0!important}}
-[data-theme="dark"] .ask-col{color:#9dc0f5!important}
-[data-theme="dark"] td.ask-cell{background:#182742!important;border-color:#4a6b9e}
-[data-theme="dark"] td.ask-cell.filled{background:#1d3054!important}
-[data-theme="dark"] td.ask-cell .ask-input{color:#cfe0ff}
-[data-theme="dark"] .ask-field .cell-input{background:#182742!important;border-color:#4a6b9e!important;color:#cfe0ff}
-[data-theme="dark"] .ask-field.filled .cell-input{background:#1d3054!important}
+@media print{.price-col,td.price-cell{border:0!important;background:#f0f0f0!important}}
+[data-theme="dark"] .price-col{color:#9dc0f5!important}
+[data-theme="dark"] td.price-cell{background:#182742!important;border-color:#4a6b9e}
+[data-theme="dark"] td.price-cell.filled{background:#1d3054!important}
+[data-theme="dark"] td.price-cell .price-input{color:#cfe0ff}
+[data-theme="dark"] .price-field .cell-input{background:#182742!important;border-color:#4a6b9e!important;color:#cfe0ff}
+[data-theme="dark"] .price-field.filled .cell-input{background:#1d3054!important}
 [data-theme="dark"] .sale-item{border-color:var(--line)}
+
+/* ---------- Add record ---------- */
+.add-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.add-field{display:flex;flex-direction:column;gap:4px;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700}
+.add-field input,.add-field select{height:40px;border:1px solid #cbd4df;border-radius:8px;padding:0 10px;background:var(--card);color:var(--ink);font-size:14px;text-transform:none;letter-spacing:normal;font-weight:400;min-width:0}
+.add-photo{border:1px dashed var(--line);border-radius:12px;overflow:hidden;background:var(--bg);display:flex;align-items:center;justify-content:center;min-height:150px}
+.add-photo img{width:100%;max-height:320px;object-fit:contain;display:block}
+.add-photo-empty{color:var(--muted);font-size:12px;padding:40px 0}
+.add-photo-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.photo-btn{display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.record-headline{display:flex;gap:10px;align-items:flex-start;min-width:0}
+.record-photo{width:52px;height:52px;border-radius:8px;object-fit:cover;flex:none;background:var(--bg)}
+@media(max-width:800px){.add-grid{grid-template-columns:1fr}.add-photo-actions .btn{flex:1}}
+@media print{.add-photo-actions{display:none!important}}
+[data-theme="dark"] .add-field input,[data-theme="dark"] .add-field select{background:#0f1726;border-color:#2c3a52;color:var(--ink)}
+[data-theme="dark"] .add-photo{background:#0f1726;border-color:#2c3a52}
