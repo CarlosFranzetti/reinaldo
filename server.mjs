@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = __dirname;
-const USER_AGENT = 'CarlosVinylCollector/1.0 +local-app';
+const USER_AGENT = 'ReysForSell/1.0 +local-app';
 
 function json(res, status, body) {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });

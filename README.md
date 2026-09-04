@@ -1,7 +1,7 @@
-# Carlos Vinyl Catalog
+# Rey’s for sell
 
-A mobile-first personal vinyl catalogue, preloaded with Carlos's 38 records and
-backed by the Discogs API. Inventory lives in the browser on the device that
+A mobile-first vinyl catalogue, preloaded with 38 records and backed by the
+Discogs API. Inventory lives in the browser on the device that
 edits it; the Discogs token stays server-side as a Vercel environment variable.
 
 ## Live deployment
@@ -15,6 +15,11 @@ deploys automatically.
 
 `GET /api/status` must return `{"ok":true,"tokenConfigured":true}` and never the
 token itself.
+
+The Vercel project and its URL are still named `reinaldo`; only the app's own
+name changed, so existing Home Screen shortcuts keep working. The browser
+storage keys are unchanged for the same reason — renaming them would orphan the
+catalogue already saved on a device.
 
 ## The three screens
 

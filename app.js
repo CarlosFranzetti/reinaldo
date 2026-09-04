@@ -2,6 +2,8 @@ import { seed, toRecord, PRICE_DISCOUNT } from '/data/catalog.js';
 
 const initial = seed.map(toRecord);
 
+// The three storage keys keep their original names on purpose: renaming them
+// would orphan the catalogue, prices and photos already saved on the device.
 const STORAGE='carlos-vinyl-inventory-v1';
 let rows = load();
 let filter='all';
@@ -34,7 +36,7 @@ function money(r){const v=num(r.price);return v===null?'':`${r.currency||'$'} ${
 function counts(){return{total:rows.length,resolved:rows.filter(r=>!r.unresolved).length,unresolved:rows.filter(r=>r.unresolved).length,priced:rows.filter(r=>num(r.price)!==null).length}}
 function filtered(){return rows.filter(r=>{const f=filter==='all'||(filter==='unresolved'&&r.unresolved)||(filter==='priced'&&num(r.price)!==null)||(filter==='linked'&&r.discogsId);const hay=[r.number,r.artist,r.release,r.label,r.catno,r.country,r.year].join(' ').toLowerCase();return f&&hay.includes(query.toLowerCase())})}
 
-function render(){if(view==='db')return renderDb();if(view==='report')return renderReport();const c=counts();app.innerHTML=`<div class="shell"><header class="topbar"><div class="brand"><div><div class="eyebrow">Personal Vinyl Inventory</div><div class="title">Carlos Vinyl Catalog</div><div class="subtitle">Discogs-assisted research, grading, pricing and export</div></div><div class="status-wrap"><div class="status"><span id="tokenDot" class="dot"></span><span id="tokenText">Checking Discogs connection…</span></div><button class="theme-btn" id="themeBtn" type="button" aria-pressed="${theme==='dark'}">${theme==='dark'?'☀️ Light mode':'🌙 Dark mode'}</button></div></div><div class="metrics"><div class="metric"><b>${c.total}</b><span>Total records</span></div><div class="metric"><b>${c.resolved}</b><span>Resolved</span></div><div class="metric"><b>${c.unresolved}</b><span>Needs verification</span></div><div class="metric"><b>${c.priced}</b><span>Priced</span></div></div></header>
+function render(){if(view==='db')return renderDb();if(view==='report')return renderReport();const c=counts();app.innerHTML=`<div class="shell"><header class="topbar"><div class="brand"><div><div class="eyebrow">Personal Vinyl Inventory</div><div class="title">Rey’s for sell</div><div class="subtitle">Discogs-assisted research, grading, pricing and export</div></div><div class="status-wrap"><div class="status"><span id="tokenDot" class="dot"></span><span id="tokenText">Checking Discogs connection…</span></div><button class="theme-btn" id="themeBtn" type="button" aria-pressed="${theme==='dark'}">${theme==='dark'?'☀️ Light mode':'🌙 Dark mode'}</button></div></div><div class="metrics"><div class="metric"><b>${c.total}</b><span>Total records</span></div><div class="metric"><b>${c.resolved}</b><span>Resolved</span></div><div class="metric"><b>${c.unresolved}</b><span>Needs verification</span></div><div class="metric"><b>${c.priced}</b><span>Priced</span></div></div></header>
 <div class="toolbar"><div class="seg"><button class="seg-btn on" id="vCatalog">Catalog</button><button class="seg-btn" id="vDb">Database</button><button class="seg-btn" id="vReport">Report</button></div>
 <input id="q" placeholder="Search artist, release, label, catalog number…" value="${esc(query)}"><select id="filter"><option value="all">All records</option><option value="unresolved">Needs verification</option><option value="linked">Discogs linked</option><option value="priced">Priced</option></select>
 <details class="menu"><summary class="btn primary">Add</summary><div class="menu-pop"><button data-act="addRec">Single record…</button><button data-act="bulkAdd">Many at once (up to ${MAX_BULK})…</button></div></details>
@@ -130,7 +132,7 @@ function renderReport(){const st=reportStats();const cur=st.cur;
       <div class="rp-rule-top"></div>
       <div class="rp-cover-body">
         <p class="rp-eyebrow">Personal Vinyl Inventory</p>
-        <h1 class="rp-title">Carlos Vinyl<br>Catalog</h1>
+        <h1 class="rp-title">Rey’s<br>for sell</h1>
         <p class="rp-standfirst">Collection Report &amp; Schedule of Holdings</p>
         <p class="rp-date">As at ${esc(reportDate())}</p>
       </div>
@@ -565,7 +567,7 @@ function openForSale(){const list=forSaleRows();const d=document.querySelector('
 function exportSaleXls(list){const cols=['#','Artist','Release','Label','Catalog Number','Country','Year','Media','Sleeve','Price','Currency','Discogs High','Discogs URL'];
   const body=list.map(r=>[r.number,r.artist,r.release,r.label,r.catno,r.country,r.year,r.media,r.sleeve,num(r.price).toFixed(2),r.currency,r.highestPrice,r.discogsUrl]);
   const table=`<table><thead><tr>${cols.map(c=>`<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${body.map(a=>`<tr>${a.map(v=>`<td>${esc(v??'')}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
-  download('Carlos_Vinyl_For_Sale.xls',`<html><head><meta charset="utf-8"><style>table{border-collapse:collapse;font-family:Arial;font-size:10pt}th{background:#0d1b2a;color:#fff;padding:6px;border:1px solid #9aa4b2}td{padding:5px;border:1px solid #c7cdd5}</style></head><body>${table}</body></html>`,'application/vnd.ms-excel')}
+  download('Reys_For_Sell_List.xls',`<html><head><meta charset="utf-8"><style>table{border-collapse:collapse;font-family:Arial;font-size:10pt}th{background:#0d1b2a;color:#fff;padding:6px;border:1px solid #9aa4b2}td{padding:5px;border:1px solid #c7cdd5}</style></head><body>${table}</body></html>`,'application/vnd.ms-excel')}
 
 // ---------- Totals ----------
 function num(v){const n=parseFloat(String(v??'').replace(/[^0-9.\-]/g,''));return Number.isFinite(n)?n:null}
@@ -652,8 +654,8 @@ async function syncAll(){if(syncing)return;
   notify('Discogs refresh finished',parts.join('\n'));
 }
 
-function exportJson(){download('Carlos_Vinyl_Inventory.json',JSON.stringify(rows,null,2),'application/json')}
-function exportXls(){const cols=['#','Artist','Release','Label','Catalog Number','Country','Year','Media Condition','Sleeve Condition','Discogs ID','Copies For Sale','Discogs High','Currency','Price','Status','Tracks / Notes'];const body=rows.map(r=>[r.number,r.artist,r.release,r.label,r.catno,r.country,r.year,r.media,r.sleeve,r.discogsId,r.numForSale,r.highestPrice,r.currency,r.price,r.unresolved?'Needs verification':r.marketplaceStatus,r.tracks]);const table=`<table><thead><tr>${cols.map(c=>`<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${body.map((a,i)=>`<tr style="${rows[i].unresolved?'background:#fff0c2':''}">${a.map(v=>`<td>${esc(v??'')}</td>`).join('')}</tr>`).join('')}</tbody></table>`;const html=`<html><head><meta charset="utf-8"><style>table{border-collapse:collapse;font-family:Arial;font-size:10pt}th{background:#0d1b2a;color:white;font-weight:bold;padding:6px;border:1px solid #9aa4b2}td{padding:5px;border:1px solid #c7cdd5}</style></head><body>${table}</body></html>`;download('Carlos_Vinyl_Inventory.xls',html,'application/vnd.ms-excel')}
+function exportJson(){download('Reys_For_Sell_Backup.json',JSON.stringify(rows,null,2),'application/json')}
+function exportXls(){const cols=['#','Artist','Release','Label','Catalog Number','Country','Year','Media Condition','Sleeve Condition','Discogs ID','Copies For Sale','Discogs High','Currency','Price','Status','Tracks / Notes'];const body=rows.map(r=>[r.number,r.artist,r.release,r.label,r.catno,r.country,r.year,r.media,r.sleeve,r.discogsId,r.numForSale,r.highestPrice,r.currency,r.price,r.unresolved?'Needs verification':r.marketplaceStatus,r.tracks]);const table=`<table><thead><tr>${cols.map(c=>`<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${body.map((a,i)=>`<tr style="${rows[i].unresolved?'background:#fff0c2':''}">${a.map(v=>`<td>${esc(v??'')}</td>`).join('')}</tr>`).join('')}</tbody></table>`;const html=`<html><head><meta charset="utf-8"><style>table{border-collapse:collapse;font-family:Arial;font-size:10pt}th{background:#0d1b2a;color:white;font-weight:bold;padding:6px;border:1px solid #9aa4b2}td{padding:5px;border:1px solid #c7cdd5}</style></head><body>${table}</body></html>`;download('Reys_For_Sell_Inventory.xls',html,'application/vnd.ms-excel')}
 function download(name,data,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 applyTheme();
 render();

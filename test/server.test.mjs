@@ -35,7 +35,7 @@ test('serves index page', async () => {
     const res = await fetch(base);
     assert.equal(res.status, 200);
     const text = await res.text();
-    assert.match(text, /Vinyl Inventory/i);
+    assert.match(text, /Rey\u2019s for sell/i);
   });
 });
 

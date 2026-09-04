@@ -1,4 +1,4 @@
-const USER_AGENT = 'CarlosVinylCollector/1.1 +vercel-app';
+const USER_AGENT = 'ReysForSell/1.1 +vercel-app';
 
 export function sendJson(res, status, body) {
   res.status(status).setHeader('Content-Type', 'application/json; charset=utf-8').setHeader('Cache-Control', 'no-store').json(body);
