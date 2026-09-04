@@ -108,7 +108,13 @@ function fillAsking(){let filled=0,noData=0,unchanged=0;
     r.askingPrice=t.toFixed(2);filled++}
   save();showTotals=true;render();
   const pct=Math.round(askBias*100);
-  alert(`Asking prices set at ${pct}% of each record's low-to-high range.\n\n${filled} updated\n${unchanged} already at that price\n${noData} skipped — no Discogs high-end suggestion yet\n\nRun "Refresh all from Discogs" first if most records were skipped.`)}
+  let why='Run "Refresh all from Discogs" first to fetch the high-end suggestions.';
+  const reasons=rows.map(r=>r.suggestionsReason).filter(Boolean);
+  if(reasons.length){const top=reasons.sort((a,b)=>reasons.filter(x=>x===b).length-reasons.filter(x=>x===a).length)[0];
+    why=/seller settings/i.test(top)
+      ? 'Discogs says: "'+top+'"\n\nCondition-based price suggestions are only released to accounts with Discogs seller settings completed. Fill those out at discogs.com/settings/seller, then run "Refresh all from Discogs" again and the high column will populate.'
+      : 'Discogs says: "'+top+'"'}
+  alert(`Asking prices set at ${pct}% of each record's low-to-high range.\n\n${filled} updated\n${unchanged} already at that price\n${noData} skipped — no Discogs high-end price to aim at\n\n${noData?why:''}`.trim())}
 
 function forSaleRows(){return rows.filter(r=>num(r.askingPrice)!==null)}
 function listingLine(r){const bits=[r.label,r.catno,r.country,r.year].filter(Boolean).join(', ');
