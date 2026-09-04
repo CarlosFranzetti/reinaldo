@@ -64,3 +64,31 @@
 [data-theme="dark"] .record-grid .cell-input,[data-theme="dark"] .record-grid .cell-select,[data-theme="dark"] .mobile-value{background:#0f1726;border-color:#2c3a52;color:var(--ink)}
 [data-theme="dark"] .sync-track{background:#222c3d}
 [data-theme="dark"] .empty,[data-theme="dark"] .footer-note{color:var(--muted)}
+
+/* ---------- Asking-price highlight and for-sale sheet ---------- */
+.ask-col{color:#1f4e8c!important}
+td.ask-cell{background:#eef4ff!important;border-left:2px solid var(--blue);border-right:2px solid var(--blue)}
+td.ask-cell.filled{background:#e2ecff!important}
+td.ask-cell .ask-input{font-weight:800;color:#123a75}
+.ask-field .cell-input{border-color:var(--blue)!important;background:#eef4ff!important;font-weight:800;color:#123a75}
+.ask-field.filled .cell-input{background:#e2ecff!important}
+.ask-field{color:var(--blue)!important}
+.sale-total{display:flex;flex-direction:column;gap:2px;margin-bottom:12px}
+.sale-total b{font-size:26px;font-variant-numeric:tabular-nums}
+.sale-total span{font-size:11px;color:var(--muted)}
+.sale-actions{display:flex;gap:8px;flex-wrap:wrap}
+.sale-list{display:grid;gap:10px}
+.sale-item{border:1px solid var(--line);border-radius:10px;padding:11px 12px}
+.sale-item-head{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.sale-item-head b{font-size:13px}
+.sale-price{font-weight:800;font-variant-numeric:tabular-nums;color:var(--blue);white-space:nowrap}
+.sale-meta{font-size:11px;color:var(--muted);margin-top:3px}
+@media(max-width:800px){.sale-actions .btn{flex:1}}
+@media print{.ask-col,td.ask-cell{border:0!important;background:#f0f0f0!important}}
+[data-theme="dark"] .ask-col{color:#9dc0f5!important}
+[data-theme="dark"] td.ask-cell{background:#182742!important;border-color:#4a6b9e}
+[data-theme="dark"] td.ask-cell.filled{background:#1d3054!important}
+[data-theme="dark"] td.ask-cell .ask-input{color:#cfe0ff}
+[data-theme="dark"] .ask-field .cell-input{background:#182742!important;border-color:#4a6b9e!important;color:#cfe0ff}
+[data-theme="dark"] .ask-field.filled .cell-input{background:#1d3054!important}
+[data-theme="dark"] .sale-item{border-color:var(--line)}

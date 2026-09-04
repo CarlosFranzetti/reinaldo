@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import statusHandler from '../api/status.mjs';
 import searchHandler from '../api/search.mjs';
 import releaseHandler from '../api/release.mjs';
+import marketplaceHandler from '../api/marketplace.mjs';
 
 function mockRes() {
   return {
@@ -36,4 +37,25 @@ test('Vercel release validates numeric release id', async () => {
   await releaseHandler({ query: { id: 'abc' } }, res);
   assert.equal(res.statusCode, 400);
   assert.match(res.body.error, /invalid release id/i);
+});
+
+test('Vercel marketplace validates numeric release id', async () => {
+  const res = mockRes();
+  await marketplaceHandler({ query: { id: '12a' } }, res);
+  assert.equal(res.statusCode, 400);
+  assert.match(res.body.error, /invalid release id/i);
+});
+
+test('Vercel marketplace reports missing token without exposing it', async () => {
+  const previous = process.env.DISCOGS_TOKEN;
+  delete process.env.DISCOGS_TOKEN;
+  try {
+    const res = mockRes();
+    await marketplaceHandler({ query: { id: '1353040' } }, res);
+    assert.equal(res.statusCode, 503);
+    assert.match(res.body.error, /DISCOGS_TOKEN/);
+    assert.doesNotMatch(JSON.stringify(res.body), /secret-example/);
+  } finally {
+    if (previous !== undefined) process.env.DISCOGS_TOKEN = previous;
+  }
 });
