@@ -8,7 +8,7 @@ export default async function handler(req, res) {
     return sendJson(res, 200, {
       id: r.id,
       title: r.title || '',
-      artists: (r.artists || []).map(a => a.name).join(', '),
+      artists: (r.artists || []).map(a => a.anv || a.name).filter(Boolean).join(', '),
       year: r.year || '',
       country: r.country || '',
       labels: (r.labels || []).map(l => ({ name: l.name, catno: l.catno })),

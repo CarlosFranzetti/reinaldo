@@ -8,14 +8,31 @@ function norm(v) { return String(v || '').toLowerCase().replace(/[^a-z0-9]+/g, '
 // Same rule the browser uses: link only on an exact catalogue number, or when
 // both artist and title appear in the result title. Anything vaguer is left
 // unlinked rather than filled with the wrong pressing.
+// Catalogue numbers are often recorded as "KR005 / KRESEARCH 005" against a
+// Discogs "KR005", so containment counts — but only for strings long enough
+// that a coincidental match is implausible.
+function catnoMatch(a, b) {
+  const x = norm(a), y = norm(b);
+  if (!x || !y) return false;
+  if (x === y) return true;
+  return (x.length >= 4 && y.length >= 4) && (x.includes(y) || y.includes(x));
+}
+
 function confident(r, x) {
-  if (r.catno && x.catno && norm(r.catno) === norm(x.catno)) return true;
+  if (catnoMatch(r.catno, x.catno)) return true;
   const title = norm(x.title);
   return Boolean(r.artist && r.release && title.includes(norm(r.artist)) && title.includes(norm(r.release)));
 }
 
+// enrich talks to Discogs directly, so the raw release shape has to be
+// normalised here the way /api/release does it for the browser.
+function artistName(j) {
+  if (Array.isArray(j.artists)) return j.artists.map(a => a.anv || a.name).filter(Boolean).join(', ');
+  return typeof j.artists === 'string' ? j.artists : '';
+}
+
 function applyRelease(r, j) {
-  r.artist = j.artists || r.artist;
+  r.artist = artistName(j) || r.artist;
   r.release = j.title || r.release;
   r.year = String(j.year || r.year || '');
   r.country = j.country || r.country;
@@ -30,10 +47,15 @@ async function enrichOne(record) {
   if (!record.discogsId) {
     const q = [record.artist, record.release, record.catno].filter(Boolean).join(' ').trim();
     if (!q) { note.reason = 'Nothing to search on'; return note; }
-    const sr = await discogsFetch(`/database/search?type=release&per_page=12&q=${encodeURIComponent(q)}`);
-    const hit = (sr.results || []).find(x => confident(record, {
-      title: x.title, catno: x.catno
-    }));
+    const queries = [q];
+    const narrow = [record.artist, record.release].filter(Boolean).join(' ').trim();
+    if (narrow && narrow !== q) queries.push(narrow);
+    let hit = null;
+    for (const query of queries) {
+      const sr = await discogsFetch(`/database/search?type=release&per_page=12&q=${encodeURIComponent(query)}`);
+      hit = (sr.results || []).find(x => confident(record, { title: x.title, catno: x.catno }));
+      if (hit) break;
+    }
     if (!hit) { note.reason = 'No confident match'; return note; }
     record.discogsId = String(hit.id);
     note.linked = true;

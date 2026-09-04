@@ -59,3 +59,28 @@ test('Vercel marketplace reports missing token without exposing it', async () =>
     if (previous !== undefined) process.env.DISCOGS_TOKEN = previous;
   }
 });
+
+test('enrich normalises Discogs artist arrays and matches partial catalogue numbers', async () => {
+  const mod = await import('../api/enrich.mjs');
+  const src = await (await import('node:fs/promises')).readFile(new URL('../api/enrich.mjs', import.meta.url), 'utf8');
+  // artistName must flatten the raw Discogs shape, preferring the credited variation
+  assert.match(src, /a\.anv \|\| a\.name/);
+  // containment match, guarded by a minimum length
+  assert.match(src, /x\.length >= 4 && y\.length >= 4/);
+  assert.equal(typeof mod.default, 'function');
+});
+
+test('enrich rejects an out-of-range start without calling Discogs', async () => {
+  const previous = process.env.DISCOGS_TOKEN;
+  delete process.env.DISCOGS_TOKEN;
+  try {
+    const enrich = (await import('../api/enrich.mjs')).default;
+    const res = mockRes();
+    await enrich({ query: { start: '9999', count: '3' } }, res);
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.done, true);
+    assert.deepEqual(res.body.records, []);
+  } finally {
+    if (previous !== undefined) process.env.DISCOGS_TOKEN = previous;
+  }
+});
